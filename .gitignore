@@ -1,0 +1,8 @@
+.dropbox.attr
+archive/
+test/
+test_data/
+bin/data/
+**/*.lp
+**/*.dat
+**/*.o
