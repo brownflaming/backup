@@ -3,3 +3,4 @@ archive/
 test/
 **/*.lp
 **/*.o
+**/*.swp
