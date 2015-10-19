@@ -44,6 +44,10 @@ int main (int argc, char *argv[])
 		}
 
 		const bool bendersFlag = atoi(argv[1]);
+		bool integerFlag = 1;
+		if ( bendersFlag )
+			integerFlag = 0;
+
 		unsigned long long seed;
 		if ( argc == 3 )
 			seed = atoi(argv[2]);
@@ -70,7 +74,9 @@ int main (int argc, char *argv[])
 		cout << "Model construction completed." << endl;
 
 		// start siddp method
-		clock_t startTime = clock();
+		// clock_t startTime = clock();
+		chrono::time_point<chrono::system_clock> start, end;
+		start = chrono::system_clock::now();
 
 		cout << "==================================================" << endl;
 		cout << "Starting SDDP procedure ... " << endl;
@@ -139,7 +145,15 @@ int main (int argc, char *argv[])
 			}
 			*/
 
-			backward(models, fData_p, candidateSol, lb, masterSol, bendersFlag);
+			if ( (! integerFlag) && (iteration > 2) )
+			{
+				if ( lb[iteration-2]-lb[iteration-3] < EPSILON )
+					integerFlag = 1;
+			}
+
+			cout << "L-shaped cuts: " << integerFlag << endl;
+
+			backward(models, fData_p, candidateSol, lb, masterSol, bendersFlag, integerFlag);
 
 			cout << "Backward pass completed." << endl;
 			cout << "================================" << endl;
@@ -164,7 +178,7 @@ int main (int argc, char *argv[])
 
 			// if master problem produce a solution encountered before, increase sample size.
 			masterSize_new = masterSol.size();
-			if ( masterSize_new == masterSize_old )
+			if ( integerFlag && (masterSize_new == masterSize_old) && (fData.numFWsample < 100) )
 			{
 				cout << "forward sample size increased by 50." << endl;
 				fData.numFWsample += 50;
@@ -182,7 +196,7 @@ int main (int argc, char *argv[])
 			vector<float> recentLB;
 			if ( iteration > 10 )
 			{
-				for ( int i = 1; i < 6; ++i )
+				for ( int i = 1; i < 4; ++i )
 					recentLB.push_back(lb[iteration-i]);
 
 				double stdReLB = std_dev(recentLB);
@@ -196,18 +210,19 @@ int main (int argc, char *argv[])
 
 		} while ( iteration < MAXITER );
 
-		clock_t endTime = clock();
-		double runtime = double(endTime - startTime)/CLOCKS_PER_SEC;
-
-		cout << (endTime - startTime) << endl;
-		cout << CLOCKS_PER_SEC << endl;
-		cout << runtime << endl;
+		// clock_t endTime = clock();
+		// double runtime = double(endTime - startTime)/CLOCKS_PER_SEC;
+		end = chrono::system_clock::now();
+		chrono::duration<double> elapsed_seconds = end - start;
+		double runtime = elapsed_seconds.count();
 
 		ofstream output ("result.txt", ios::out | ios::app);
 		if ( output.is_open() )
 		{
 			output << "==================================================" << endl;
 			output << "==================================================" << endl;
+			output << "time horizon: " << fData.numStage << endl;
+			output << "Benders cut: " << bendersFlag << endl;
 			output << "total iterations: " << iteration << endl;
 			output << "total time elapsed: " << runtime << " seconds." << endl;
 			output << "lower bounds improvement: " << lb   << endl;
@@ -215,9 +230,6 @@ int main (int argc, char *argv[])
 			output << "left 95\% CI for the upper bound: "  << ub_l << endl;
 			output << "right 95\% CI for the upper bound: " << ub_r << endl;
 		}
-
-
-		
 
 		// free memory
 		delete [] models;

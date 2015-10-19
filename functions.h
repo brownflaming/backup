@@ -42,7 +42,7 @@ void forward (Model * models, formatData * fData_p, const IloNumArray3 samplePat
 		IloNumArray3 & candidateSol, IloNumArray & ub, IloNumArray & ub_l, IloNumArray & ub_r);
 
 void backward (Model * models, formatData * fData_p, const IloNumArray3 candidateSol,
-		IloNumArray & lb, std::unordered_set<std::string> & masterSol, const bool bendersFlag);
+		IloNumArray & lb, std::unordered_set<std::string> & masterSol, const bool bendersFlag, const bool integerFlag);
 
 double avg ( std::vector<float> & v );
 
