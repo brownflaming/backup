@@ -381,6 +381,7 @@ void forward (Model * models, formatData * fData_p, const IloNumArray3 samplePat
 IloNumArray heuristic ( IloNumArray fracSoln )
 // HEURISTIC() takes a fractional solution and round it up to an integer solution
 {
+    cout << "Constructing integer solution." << endl;	
 	IloEnv env = fracSoln.getEnv();
 	IloNumArray intSoln(env, fracSoln.getSize());
 
@@ -395,7 +396,7 @@ IloNumArray heuristic ( IloNumArray fracSoln )
 	IloNumArray2 unaryCoef(env, nType);
 	for ( unsigned i = 0; i < nType; ++i )
 	{
-		unaryCoef.add(IloNumArray(env));
+		unaryCoef[i] = IloNumArray(env);
 		for (int x = 0; x < unitLimit.at(i) + 1; ++x )
 			unaryCoef[i].add(x);
 	}
@@ -405,10 +406,12 @@ IloNumArray heuristic ( IloNumArray fracSoln )
 
 	for ( int i = 0; i < nType; ++i )
 	{
-		IloNumArray oldSoln[i](env);
+		oldSoln[i] = IloNumArray(env);
 
 		for ( int j = 0; j < unitLimit.at(i) + 1; ++j )
 			oldSoln[i].add(fracSoln[j+index]);
+
+		cout << "old solution " << i << ":" << oldSoln[i] << endl;
 
 		int value = ceil(IloScalProd(oldSoln[i], unaryCoef[i]));
 		intSoln[index + value] = 1;
@@ -416,6 +419,8 @@ IloNumArray heuristic ( IloNumArray fracSoln )
 		index += unitLimit.at(i);
 		index += 1;
 	}
+
+	cout << "integer solution: " << intSoln << endl;
 
 	return intSoln;
 }

@@ -41,6 +41,8 @@ void getSamplePaths (IloNumArray3& samplePaths, formatData * fData_p);
 void forward (Model * models, formatData * fData_p, const IloNumArray3 samplePaths,
 		IloNumArray3 & candidateSol, IloNumArray & ub, IloNumArray & ub_l, IloNumArray & ub_r);
 
+IloNumArray heuristic ( IloNumArray fracSoln);
+
 void backward (Model * models, formatData * fData_p, const IloNumArray3 candidateSol,
 		IloNumArray & lb, std::unordered_set<std::string> & masterSol, const bool bendersFlag, const bool integerFlag);
 
