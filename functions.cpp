@@ -318,16 +318,15 @@ void forward (Model * models, formatData * fData_p, const IloNumArray3 samplePat
 
 				if ( solStatus == IloAlgorithm::Optimal )
 				{
-					// record the solution
+					// record the LP solution
 					IloNumArray vals(fData_p->dataEnv);
 					models[t].cplex.getValues(vals, models[t].x);
-					IloNumArray newVals = heuristic(vals);
 					
+					// construct integer candidate solution
+					IloNumArray newVals = heuristic(vals);
 					candidateSol[p].add(newVals);
 					
 					// Update objective function value of current sample path:
-					// sampleObj[p] += models[t].ObjValue - theta_{t+1}^*
-					// sampleObj[p] = sampleObj[p] + models[t].cplex.getObjValue() - costToGo;
 					IloNumArray y1(fData_p->dataEnv);
 					IloNumArray y2(fData_p->dataEnv);
 					models[t].cplex.getValues(y1, models[t].y1);
