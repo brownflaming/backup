@@ -7,6 +7,7 @@
 #include <cstddef>  // std::size_t
 #include <numeric>
 #include <random>
+#include <array>
 
 #include "global.h"
 #include "functions.h"
@@ -97,6 +98,7 @@ void buildModel (Model * models, formatData * fData_p)
 	int t, i, j, k;
 	IloInt numStage = fData_p->numStage;
 
+	// extract decision variable dimensions
 	// extract decision variable dimensions
 	IloInt x_dim = fData_p->xCoef[0].getSize();   // state variables
 	IloInt y1_dim = fData_p->y1Coef[0].getSize(); // current stage integral variables
@@ -210,7 +212,6 @@ void buildModel (Model * models, formatData * fData_p)
 
 		// set model solve output
 		models[t].cplex.setOut(models[t].env.getNullStream());
-
 		// set model warning message
 		models[t].cplex.setWarning(models[t].env.getNullStream());
 
@@ -300,8 +301,15 @@ void forward (Model * models, formatData * fData_p, const IloNumArray3 samplePat
 				for ( i = 0; i < constr2Size; ++i )
 					models[t].constr2[i].setBounds(candidateSol[p][t-1][i], candidateSol[p][t-1][i]);
 			} // End of update problem models[t]
+					
+			IloConversion relaxVarX(models[t].env, models[t].x, ILOFLOAT);
+			IloConversion relaxVarY(models[t].env, models[t].y1, ILOFLOAT);
+			IloConversion relaxVarZ(models[t].env, models[t].z, ILOFLOAT);
+			models[t].mod.add(relaxVarX);
+			models[t].mod.add(relaxVarY);
+			models[t].mod.add(relaxVarZ);
 
-			// solve the current MIP model
+			// solve the model[t] LP relaxation, round-up to a feasible solution
 			if ( models[t].cplex.solve() )
 			{
 				//get solution status
@@ -313,16 +321,19 @@ void forward (Model * models, formatData * fData_p, const IloNumArray3 samplePat
 					// record the solution
 					IloNumArray vals(fData_p->dataEnv);
 					models[t].cplex.getValues(vals, models[t].x);
-					for ( i = 0; i < vals.getSize(); ++i )
-						vals[i] = round(vals[i]);
-					candidateSol[p].add(vals);
+					IloNumArray newVals = heuristic(vals);
 					
-					IloNum costToGo = models[t].cplex.getValue(models[t].theta);
-					// cout << "!!!!!!!!!! OBJECTIVE: " << models[t].cplex.getObjValue() << endl;
-
+					candidateSol[p].add(newVals);
+					
 					// Update objective function value of current sample path:
 					// sampleObj[p] += models[t].ObjValue - theta_{t+1}^*
-					sampleObj[p] = sampleObj[p] + models[t].cplex.getObjValue() - costToGo;
+					// sampleObj[p] = sampleObj[p] + models[t].cplex.getObjValue() - costToGo;
+					IloNumArray y1(fData_p->dataEnv);
+					IloNumArray y2(fData_p->dataEnv);
+					models[t].cplex.getValues(y1, models[t].y1);
+					models[t].cplex.getValues(y2, models[t].y2);
+					IloNum currObj = IloScalProd(fData_p->y1Coef[t], y1) + IloScalProd(fData_p->y2Coef[t], y2);
+					sampleObj[p] += currObj;
 				}
 				else
 				{
@@ -337,6 +348,10 @@ void forward (Model * models, formatData * fData_p, const IloNumArray3 samplePat
 				cout << "Sample " << p << ", Stage " << t << endl;
 				throw ("Infeasible...");
 			}
+
+			relaxVarX.end();
+			relaxVarY.end();
+			relaxVarZ.end();
 
 		} // End of loop over stages
 
@@ -362,6 +377,49 @@ void forward (Model * models, formatData * fData_p, const IloNumArray3 samplePat
 	// free momory
 	sampleObj.end();
 } // End of forward pass to generate candidate solutions
+
+
+IloNumArray heuristic ( IloNumArray fracSoln )
+// HEURISTIC() takes a fractional solution and round it up to an integer solution
+{
+	IloEnv env = fracSoln.getEnv();
+	IloNumArray intSoln(env, fracSoln.getSize());
+
+	// hard-code some data for heuristic to find feasible solutions
+	// in particular, unitLimit = [4, 10, 10, 1, 45, 4]
+	array<int,6> unitLimit = {4, 10, 10, 1, 45, 4};
+	int nType = unitLimit.size();
+	int nUnit = 0;
+	for ( auto it = unitLimit.begin(); it != unitLimit.end(); ++it )
+		nUnit += *it;
+
+	IloNumArray2 unaryCoef(env, nType);
+	for ( unsigned i = 0; i < nType; ++i )
+	{
+		unaryCoef.add(IloNumArray(env));
+		for (int x = 0; x < unitLimit.at(i) + 1; ++x )
+			unaryCoef[i].add(x);
+	}
+
+	IloNumArray2 oldSoln(env, nType);
+	IloInt index = 0;
+
+	for ( int i = 0; i < nType; ++i )
+	{
+		IloNumArray oldSoln[i](env);
+
+		for ( int j = 0; j < unitLimit.at(i) + 1; ++j )
+			oldSoln[i].add(fracSoln[j+index]);
+
+		int value = ceil(IloScalProd(oldSoln[i], unaryCoef[i]));
+		intSoln[index + value] = 1;
+
+		index += unitLimit.at(i);
+		index += 1;
+	}
+
+	return intSoln;
+}
 
 void backward (Model * models, formatData * fData_p, const IloNumArray3 candidateSol,
 		IloNumArray & lb, unordered_set<string> & masterSol, const bool bendersFlag,
@@ -519,21 +577,6 @@ void backward (Model * models, formatData * fData_p, const IloNumArray3 candidat
 				rhs = fData_p->valueLB[t-1] - (mipObjAve - fData_p->valueLB[t-1]) * (accumulate( (*it).begin(), (*it).end(), 0) -1);
 				models[t-1].cuts.add(expr >= rhs);
 				models[t-1].mod.add(expr >= rhs);
-				cout << "L-shpaed cut added." << endl;
-				expr.end();
-			}
-
-			// construct and add Benders cut
-			if ( bendersFlag )
-			{
-				IloExpr expr(models[t-1].env);
-				expr = models[t-1].theta;
-				for ( i = 0; i < models[t-1].x.getSize(); ++i )
-				{
-					expr -= dualAvg[i] * models[t-1].x[i];
-				}
-				rhs = IloSum(scenLPobj) / fData_p->numScen[t] - inner_product(dualAvg.begin(), dualAvg.end(), (*it).begin(), 0);
-				models[t-1].cuts.add(expr >= rhs);
 				models[t-1].mod.add(expr >= rhs);
 				cout << "Benders cut added." << endl;
 				expr.end();
