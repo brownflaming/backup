@@ -179,11 +179,14 @@ int main (int argc, char *argv[])
 
 			// if master problem produce a solution encountered before, increase sample size.
 			masterSize_new = masterSol.size();
-			if ( integerFlag && (masterSize_new == masterSize_old) && (fData.numFWsample < 100) )
+			/*
+			if ( integerFlag && (masterSize_new == masterSize_old) && (fData.numFWsample < 100*fData.numStage) )
 			{
-				cout << "forward sample size increased by " << fData.numFWsample << endl;
+				cout << "forward sample size increased by " << initSampleSize << endl;
 				fData.numFWsample += initSampleSize;
 			}
+			*/
+
 			//cout << "candidateSol" << endl;
 			//cout << candidateSol << endl;
 
@@ -224,6 +227,7 @@ int main (int argc, char *argv[])
 			output << "==================================================" << endl;
 			output << "time horizon: " << fData.numStage << endl;
 			output << "Benders cut: " << bendersFlag << endl;
+			output << "FW sample path increment: " << initSampleSize << endl;
 			output << "total iterations: " << iteration << endl;
 			output << "total time elapsed: " << runtime << " seconds." << endl;
 			output << "lower bounds improvement: " << lb   << endl;

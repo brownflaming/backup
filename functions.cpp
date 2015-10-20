@@ -565,6 +565,7 @@ void backward (Model * models, formatData * fData_p, const IloNumArray3 candidat
 	{
 		// get solution status
 		solStatus = models[0].cplex.getStatus();
+		cout << "solution status obtained." << endl;
 
 		if ( solStatus == IloAlgorithm::Optimal )
 		{
@@ -572,6 +573,7 @@ void backward (Model * models, formatData * fData_p, const IloNumArray3 candidat
 			lb.add(models[0].cplex.getObjValue());
 			IloNumArray vals(fData_p->dataEnv, models[0].x.getSize());
 			models[0].cplex.getValues(vals, models[0].x);
+			cout << "solution value obtained." << endl;
 			for ( i = 0; i < vals.getSize(); ++i )
 				vals[i] = round(vals[i]);
 			masterSol.insert(toString(vals));
