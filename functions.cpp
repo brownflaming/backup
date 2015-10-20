@@ -594,6 +594,20 @@ void backward (Model * models, formatData * fData_p, const IloNumArray3 candidat
 				expr.end();
 			}
 
+			// construct and add Benders cut
+			if ( bendersFlag )
+			{
+				IloExpr expr(models[t-1].env);
+				expr = models[t-1].theta;
+				for ( i = 0; i < models[t-1].x.getSize(); ++i )
+					expr -= dualAvg[i] * models[t-1].x[i];
+				rhs = IloSum(scenLPobj) / fData_p->numScen[t] - inner_product(dualAvg.begin(), dualAvg.end(), (*it).begin(), 0);
+				models[t-1].cuts.add(expr >= rhs);
+				models[t-1].mod.add(expr >= rhs);
+				cout << "Benders cut added." << endl;
+				expr.end();
+			}
+
 			// free momery
 			scenMIPobj.end();
 			if ( bendersFlag )
