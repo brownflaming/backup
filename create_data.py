@@ -26,18 +26,16 @@ if __name__ == "__main__":
 
     nType = len(GENERATOR_LIST)     # number of technology
     nUnit = sum(MAX_UNIT)           # sum of maximum construction
+	binLength = np.floor(np.log2(MAX_UNIT)).astype(int)
+	sumLength = sum(binLength) + nType
 
-    numFWsample = 50
+    numFWsample = 3
     scenPerStage = 3
 
     numScen = np.ones(HORIZON - 1, np.int32) * scenPerStage
     numScen = np.insert(numScen, 0, 1)
 
-    initState = np.zeros((nUnit + nType))
-    for i in xrange(nType):
-        index = sum(MAX_UNIT[0: i]) + i
-        initState[index] = 1
-
+    initState = np.zeros(sumLength)
     valueLB = np.zeros(HORIZON)
 
     D0 = 0.57
@@ -105,7 +103,7 @@ if __name__ == "__main__":
     ''' Construct data for objective function c x + b1 y1 + b2 y2 '''
     # construct c (coefficients for x state variabls)
     # doesn't show up in objective funcion, thus all zeros
-    xCoef = np.zeros(nType + nUnit)
+    xCoef = np.zeros(sumLength)
     print "x.shape", xCoef.shape
 
     myFile = open(dataDir + "xCoef.dat", "w")
@@ -171,18 +169,14 @@ if __name__ == "__main__":
     myFile.close()
 
     ''' Construct data for constraints A x + W1 y1 + W2 y2 + B z >= rhs '''
-    P = np.zeros((nType, nUnit + nType))
+    P = np.zeros((nType, sumLength))
     for i in xrange(nType):
-        P[i, sum(MAX_UNIT[0:i]) + i: sum(MAX_UNIT[0:i + 1]) + i + 1] = range(0, MAX_UNIT[i] + 1)
-
-    SOS = np.zeros((nType, nUnit + nType))
-    for i in xrange(nType):
-        SOS[i, sum(MAX_UNIT[0:i]) + i: sum(MAX_UNIT[0:i + 1]) + i + 1] = np.ones(MAX_UNIT[i] + 1)
+        P[i, sum(binLength[0:i]) + i: sum(binLength[0:i + 1]) + i + 1] = 2**np.arange(binLength[i] + 1)
 
     # construct matrix A (x variable)
-    A = np.vstack((np.zeros((4 * nType, nUnit + nType)),
-                   P, -P, SOS, -SOS,
-                   np.zeros((2 * nType + 2 * SUBPERIOD, nUnit + nType))))
+    A = np.vstack((np.zeros((4 * nType, sumLength)),
+                   P, -P,
+                   np.zeros((2 * SUBPERIOD, sumLength))))
 
     print "A.shape:", A.shape
 
