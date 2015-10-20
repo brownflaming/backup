@@ -80,6 +80,7 @@ int main (int argc, char *argv[])
 
 		cout << "==================================================" << endl;
 		cout << "Starting SDDP procedure ... " << endl;
+		IloInt initSampleSize = fData.numFWsample;
 		IloNumArray lb(fData.dataEnv); // double array to record lowerbound
 		IloNumArray ub_c(fData.dataEnv); // double array to record ub center
 		IloNumArray ub_l(fData.dataEnv); // double array to record ub lower interval
@@ -180,8 +181,8 @@ int main (int argc, char *argv[])
 			masterSize_new = masterSol.size();
 			if ( integerFlag && (masterSize_new == masterSize_old) && (fData.numFWsample < 100) )
 			{
-				cout << "forward sample size increased by 50." << endl;
-				fData.numFWsample += 50;
+				cout << "forward sample size increased by " << fData.numFWsample << endl;
+				fData.numFWsample += initSampleSize;
 			}
 			//cout << "candidateSol" << endl;
 			//cout << candidateSol << endl;
@@ -196,7 +197,7 @@ int main (int argc, char *argv[])
 			vector<float> recentLB;
 			if ( iteration > 10 )
 			{
-				for ( int i = 1; i < 4; ++i )
+				for ( int i = 1; i < 6; ++i )
 					recentLB.push_back(lb[iteration-i]);
 
 				double stdReLB = std_dev(recentLB);
