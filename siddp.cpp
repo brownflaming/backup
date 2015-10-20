@@ -193,6 +193,7 @@ int main (int argc, char *argv[])
 			    After a certain number of iterations, if lower bound starts to stablize,
 				i.e., variance of the last five lower bounds is small enough
 			*/
+			/*
 			vector<float> recentLB;
 			if ( iteration > 10 )
 			{
@@ -206,6 +207,7 @@ int main (int argc, char *argv[])
 					break;
 				}
 			}
+			*/
 
 
 		} while ( iteration < MAXITER );

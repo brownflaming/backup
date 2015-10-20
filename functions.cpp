@@ -330,6 +330,8 @@ void forward (Model * models, formatData * fData_p, const IloNumArray3 samplePat
 					IloNumArray y1(fData_p->dataEnv);
 					IloNumArray y2(fData_p->dataEnv);
 					models[t].cplex.getValues(y1, models[t].y1);
+					for ( unsigned i = 0; i < y1.getSize(); ++i )
+						y1[i] = ceil(y1[i]);
 					models[t].cplex.getValues(y2, models[t].y2);
 					IloNum currObj = IloScalProd(fData_p->y1Coef[t], y1) + IloScalProd(fData_p->y2Coef[t], y2);
 					sampleObj[p] += currObj;
@@ -381,7 +383,7 @@ void forward (Model * models, formatData * fData_p, const IloNumArray3 samplePat
 IloNumArray heuristic ( IloNumArray fracSoln )
 // HEURISTIC() takes a fractional solution and round it up to an integer solution
 {
-    cout << "Constructing integer solution." << endl;	
+    // cout << "Constructing integer solution." << endl;	
 	IloEnv env = fracSoln.getEnv();
 	IloNumArray intSoln(env, fracSoln.getSize());
 
@@ -411,7 +413,7 @@ IloNumArray heuristic ( IloNumArray fracSoln )
 		for ( int j = 0; j < unitLimit.at(i) + 1; ++j )
 			oldSoln[i].add(fracSoln[j+index]);
 
-		cout << "old solution " << i << ":" << oldSoln[i] << endl;
+	//	cout << "old solution " << i << ":" << oldSoln[i] << endl;
 
 		int value = ceil(IloScalProd(oldSoln[i], unaryCoef[i]));
 		intSoln[index + value] = 1;
@@ -420,7 +422,7 @@ IloNumArray heuristic ( IloNumArray fracSoln )
 		index += 1;
 	}
 
-	cout << "integer solution: " << intSoln << endl;
+	// cout << "integer solution: " << intSoln << endl;
 
 	return intSoln;
 }
@@ -460,6 +462,12 @@ void backward (Model * models, formatData * fData_p, const IloNumArray3 candidat
 
 		for ( auto it = uniqueSol.begin(); it != uniqueSol.end(); ++it )  // 
 		{
+			if ( t == 1 )
+			{
+				for ( i = 0; i < constr2Size; ++i )
+					cout << (*it)[i];
+				cout << " " << endl;
+			}
 			// cout << "Total number of scenarios at this stage: " << fData_p->numScen[t] << endl;
 			// create arrays to store MIP and LP optimal values
 			IloNumArray scenMIPobj(fData_p->dataEnv);
@@ -582,7 +590,7 @@ void backward (Model * models, formatData * fData_p, const IloNumArray3 candidat
 				models[t-1].cuts.add(expr >= rhs);
 				models[t-1].mod.add(expr >= rhs);
 				models[t-1].mod.add(expr >= rhs);
-				cout << "Benders cut added." << endl;
+				cout << "L-shaped cut added." << endl;
 				expr.end();
 			}
 
