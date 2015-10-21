@@ -4,7 +4,7 @@ import os
 
 if __name__ == "__main__":
 
-    HORIZON = 3
+    HORIZON = 10 
     GENERATOR_LIST = {0: 'BaseLoad', 1: 'CC', 2: 'CT', 3: 'Nuclear', 4: 'Wind', 5: 'IGCC'}
     MAX_OUTPUT = np.array([1130.0, 390.0, 380.0, 1180.0, 175.0, 560.0])
     MAX_UNIT = np.array([4, 10, 10, 1, 45, 4], np.int32)
@@ -96,9 +96,9 @@ if __name__ == "__main__":
     myFile.close()
 
     # scenarios
-    # myFile = open(dataDir + "scenarios.dat", "w")
-    # myFile.write(str(scenarios))
-    # myFile.close()
+    myFile = open(dataDir + "scenarios.dat", "w")
+    myFile.write(str(scenarios))
+    myFile.close()
 
     ''' Construct data for objective function c x + b1 y1 + b2 y2 '''
     # construct c (coefficients for x state variabls)
