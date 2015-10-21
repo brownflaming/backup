@@ -4,7 +4,7 @@ import os
 
 if __name__ == "__main__":
 
-    HORIZON = 8
+    HORIZON = 3
     GENERATOR_LIST = {0: 'BaseLoad', 1: 'CC', 2: 'CT', 3: 'Nuclear', 4: 'Wind', 5: 'IGCC'}
     MAX_OUTPUT = np.array([1130.0, 390.0, 380.0, 1180.0, 175.0, 560.0])
     MAX_UNIT = np.array([4, 10, 10, 1, 45, 4], np.int32)
@@ -26,8 +26,8 @@ if __name__ == "__main__":
 
     nType = len(GENERATOR_LIST)     # number of technology
     nUnit = sum(MAX_UNIT)           # sum of maximum construction
-	binLength = np.floor(np.log2(MAX_UNIT)).astype(int)
-	sumLength = sum(binLength) + nType
+    binLength = np.floor(np.log2(MAX_UNIT)).astype(int)
+    sumLength = sum(binLength) + nType
 
     numFWsample = 3
     scenPerStage = 3
@@ -96,9 +96,9 @@ if __name__ == "__main__":
     myFile.close()
 
     # scenarios
-    myFile = open(dataDir + "scenarios.dat", "w")
-    myFile.write(str(scenarios))
-    myFile.close()
+    # myFile = open(dataDir + "scenarios.dat", "w")
+    # myFile.write(str(scenarios))
+    # myFile.close()
 
     ''' Construct data for objective function c x + b1 y1 + b2 y2 '''
     # construct c (coefficients for x state variabls)
@@ -202,7 +202,7 @@ if __name__ == "__main__":
     # construct matrix W1 (y1 integer variables)
     I = np.identity(nType)
     W1 = np.vstack((I, I, I, -I, -I, I,
-                    np.zeros((2 * SUBPERIOD + 4 * nType, nType))))
+                    np.zeros((2 * SUBPERIOD, nType))))
 
     print "W1.shape:", W1.shape
 
@@ -239,7 +239,7 @@ if __name__ == "__main__":
                       np.ones(nType + 1)))
     demandLHS = np.vstack((row1, row2, row3, -row1, -row2, -row3))
 
-    W2 = np.vstack((R, np.zeros((7 * nType, SUBPERIOD * (nType + 1))), demandLHS))
+    W2 = np.vstack((R, np.zeros((3 * nType, SUBPERIOD * (nType + 1))), demandLHS))
 
     print "W2.shape:", W2.shape
 
@@ -264,8 +264,7 @@ if __name__ == "__main__":
 
     # construct B matrix (z variables, local copy of state variable from last period)
     B = np.vstack((P, P, P, -P, -P, P,
-                   np.zeros((2 * nType, nUnit + nType)), SOS, -SOS,
-                   np.zeros((2 * SUBPERIOD, nUnit + nType))))
+                   np.zeros((2 * SUBPERIOD, sumLength))))
 
     print "B.shape:", B.shape
 
@@ -290,10 +289,7 @@ if __name__ == "__main__":
 
     # construct rhs
     rhs = np.hstack((np.zeros((SUBPERIOD * nType)), -MAX_UNIT,
-                     np.zeros(2 * nType),
-                     np.ones(nType), -np.ones(nType),
-                     np.ones(nType), -np.ones(nType),
-                     np.zeros(2 * SUBPERIOD)))
+                     np.zeros(2 * nType + 2 * SUBPERIOD)))
 
     print "rhs.shape:", rhs.shape
 
