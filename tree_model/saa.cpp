@@ -152,6 +152,7 @@ int main ()
 
 		// create cplex algorithm
 		IloCplex cplex(mod);
+		cplex.setParam(IloCplex::TiLim, 7200);
 		
 		// write model to file
 		char fileName[100];

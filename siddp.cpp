@@ -8,6 +8,7 @@
 #include <chrono>
 #include <random>
 #include <unordered_set>
+#include <algorithm> // std::max
 
 #include "global.h"
 #include "functions.h"
@@ -81,6 +82,7 @@ int main (int argc, char *argv[])
 		cout << "==================================================" << endl;
 		cout << "Starting SDDP procedure ... " << endl;
 		IloInt initSampleSize = fData.numFWsample;
+		bool largeSampleTest = 0;  // used in stopping heuristic
 		IloNumArray lb(fData.dataEnv); // double array to record lowerbound
 		IloNumArray ub_c(fData.dataEnv); // double array to record ub center
 		IloNumArray ub_l(fData.dataEnv); // double array to record ub lower interval
@@ -198,17 +200,26 @@ int main (int argc, char *argv[])
 				i.e., variance of the last five lower bounds is small enough
 			*/
 			
-			vector<float> recentLB;
 			if ( iteration > 10 )
 			{
+				vector<float> recentLB;
 				for ( int i = 1; i < 6; ++i )
 					recentLB.push_back(lb[iteration-i]);
 
 				double stdReLB = std_dev(recentLB);
 				if ( stdReLB < TOLOPT )
 				{
-					cout << "Lower bound has stablized." << endl;
-					break;
+					if ( largeSampleTest )
+					{
+						cout << "Lower bound has stablized." << endl;
+						break;
+					}
+					else
+					{
+						fData.numFWsample = max(100, int(fData.numFWsample));
+						largeSampleTest = 1;
+					}
+				
 				}
 			}
 			
@@ -220,6 +231,7 @@ int main (int argc, char *argv[])
 		end = chrono::system_clock::now();
 		chrono::duration<double> elapsed_seconds = end - start;
 		double runtime = elapsed_seconds.count();
+		printf("Total running time %.2f seconds.\n", runtime);
 
 		ofstream output ("result.txt", ios::out | ios::app);
 		if ( output.is_open() )
@@ -228,7 +240,7 @@ int main (int argc, char *argv[])
 			output << "==================================================" << endl;
 			output << "time horizon: " << fData.numStage << endl;
 			output << "Benders cut: " << bendersFlag << endl;
-			output << "FW sample path increment: " << initSampleSize << endl;
+			output << "FW sample paths: " << initSampleSize << endl;
 			output << "total iterations: " << iteration << endl;
 			output << "total time elapsed: " << runtime << " seconds." << endl;
 			output << "lower bounds improvement: " << lb   << endl;

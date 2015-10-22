@@ -4,7 +4,7 @@ import os
 
 if __name__ == "__main__":
 
-    HORIZON = 10 
+    HORIZON = 6
     GENERATOR_LIST = {0: 'BaseLoad', 1: 'CC', 2: 'CT', 3: 'Nuclear', 4: 'Wind', 5: 'IGCC'}
     MAX_OUTPUT = np.array([1130.0, 390.0, 380.0, 1180.0, 175.0, 560.0])
     MAX_UNIT = np.array([4, 10, 10, 1, 45, 4], np.int32)
