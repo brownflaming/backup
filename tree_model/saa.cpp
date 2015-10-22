@@ -1,7 +1,10 @@
 #include <ilcplex/ilocplex.h>
+#include <cmath>
 
 ILOSTLBEGIN
 
+typedef IloArray<IloIntVarArray> IloIntVarArray2;
+typedef IloArray<IloNumVarArray> IloNumVarArray2;
 typedef IloArray<IloNumVarArray2> IloNumVarArray3;
 typedef IloArray<IloNumArray2> IloNumArray3;
 
@@ -41,7 +44,7 @@ int main ()
 		readArray<IloNumArray2> (zCoef, "data/zCoef.dat");
 		readArray<IloNumArray> (maxOutput, "data/maxOutput.dat");
 		readArray<IloNumArray> (maxUnit, "data/maxUnit.dat");
-		readArray<IloNumArray2> (demand, "data/demand.dat");
+		readArray<IloNumArray3> (demand, "data/demand.dat");
 		
 		cout << "All data loaded. Constructing model..." << endl;
 
@@ -54,11 +57,16 @@ int main ()
 		IloNumVarArray2 z(env, numNode);  // penalties
 		for ( n = 0; n < numNode; ++n )
 		{
-			x[n] = IloIntVarArray(env, numGen);
-			y[n] = IloNumVarArray2(env, numGen);
+			x[n] = IloIntVarArray(env, numGen, 0.0, IloInfinity);
+			mod.add(x[n]);
+			y[n] = IloNumVarArray2(env, numSub);
 			for ( k = 0; k < numSub; ++k )
-				y[n][k] = IloNumVarArray(env, numGen);
-			z[n] = IloNumVarArray(env, numSub);
+			{
+				y[n][k] = IloNumVarArray(env, numGen, 0.0, IloInfinity, ILOFLOAT);
+				mod.add(y[n][k]);
+			}
+			z[n] = IloNumVarArray(env, numSub, 0.0, IloInfinity, ILOFLOAT);
+			mod.add(z[n]);
 		}
 
 		cout << "Decision variables constructed." << endl;
@@ -68,7 +76,7 @@ int main ()
 		IloExpr objExpr(env);
 		for ( t = 0; t < numStage; ++t )
 		{
-			for ( n = (numChi ** t - 1) / (numChi-1) ; n < (numChi ** (t+1) - 1) / (numChi - 1); ++n )
+			for ( n = (pow(numChi, t) - 1) / (numChi - 1) ; n < (pow(numChi, t+1) - 1) / (numChi - 1); ++n )
 			{
 				objExpr += IloScalProd(xCoef[t], x[n]);
 				for ( k = 0; k < numSub; ++k )
@@ -85,7 +93,7 @@ int main ()
 		IloRangeArray constr(env);
 		for ( t = 0; t < numStage; ++t )
 		{
-			for ( n = (numChi ** t - 1) / (numChi-1) ; n < (numChi ** (t+1) - 1) / (numChi - 1); ++n )
+			for ( n = (pow(numChi, t) - 1) / (numChi - 1) ; n < (pow(numChi, t+1) - 1) / (numChi - 1); ++n )
 			{
 				// find the path to n
 				int path2n[t+1];
@@ -101,9 +109,9 @@ int main ()
 					for  ( k = 0; k < numSub; ++k ) // for each subperiod
 					{
 						IloExpr expr(env);
-						for ( int m : path2n )
-							expr += x[m][i];
-						expr -= 1.0 / maxOutput[i] * y[n][k][i];
+						for ( int m = 0; m < sizeof(path2n)/sizeof(path2n[0]); ++m )
+							expr += x[path2n[m]][i];
+						expr -= (1.0 / maxOutput[i]) * y[n][k][i];
 						constr.add(expr >= 0);
 						expr.end();
 					}
@@ -115,8 +123,8 @@ int main ()
 					for ( i = 0; i < numGen; ++i )
 					{
 						IloExpr expr(env);
-						for ( int m : path2n )
-							expr += x[m][i];
+						for ( int m = 0; m < sizeof(path2n)/sizeof(path2n[0]); ++m )
+							expr += x[path2n[m]][i];
 						constr.add(expr <= maxUnit[i]);
 						expr.end();
 					}
@@ -152,24 +160,14 @@ int main ()
 
 		cout << "Model written in file tree_model.lp." << endl;
 		
-		cout << "=============================================" << endl;
-		
 		cplex.solve();
 
-		/*
-		cout << "Solving the model..." << endl;
+		cout << "=============================================" << endl;
 		IloAlgorithm::Status solStatus;
-
-		if ( cplex.solve() )
-		{
-			solStatus = cplex.getStatus();
-			
-			if ( solStatus == IloAlgorithm::Optimal )
-			{
-				
-			}
-		}
-		*/
+		solStatus = cplex.getStatus();
+		cout << "solution status: " << solStatus << endl;	
+		if ( solStatus == IloAlgorithm::Optimal )
+			cout << "Optimal value: " << cplex.getObjValue() << endl;
 	}
 	catch (const IloException & e)
 	{

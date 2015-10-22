@@ -4,7 +4,7 @@ import os
 
 if __name__ == "__main__":
 
-    HORIZON = 3 
+    HORIZON = 10 
     GENERATOR_LIST = {0: 'BaseLoad', 1: 'CC', 2: 'CT', 3: 'Nuclear', 4: 'Wind', 5: 'IGCC'}
     MAX_OUTPUT = np.array([1130.0, 390.0, 380.0, 1180.0, 175.0, 560.0])
     MAX_UNIT = np.array([4, 10, 10, 1, 45, 4], np.int32)
@@ -14,7 +14,7 @@ if __name__ == "__main__":
     CONSTRUCTION_COST = np.array([1.446, 0.795, 0.575, 1.613, 1.650, 1.671])
     MAX_CAPACITY = np.array([1200.0, 400.0, 400.0, 1200.0, 500.0, 600.0])
 
-    FUEL_PRICE = np.array([3.37, 9.11 * 1e-6 / 1.028, 9.11 * 1e-6 / 1.028, 0.93e-3, 0, 3.37])
+    FUEL_PRICE = np.array([3.37, 9.11 * 1e-6 / 1.028, 9.11 * 1e-6 / 1.028, 0.93e-3, 0, 3.37]) * 1e-6
     RATIO = [8.844 / 0.4, 7.196 / 0.56, 10.842 / 0.4, 10.400 / 0.45, 0.0, 8.613 / 0.48]
     FUEL_PRICE_GROWTH = 0.02
     OPERATING_COST = np.array([4.7, 2.11, 3.66, 0.51, 5.00, 2.98]) * 1e-6
@@ -165,7 +165,7 @@ if __name__ == "__main__":
     # zCoef of tree model
     zCoef = np.zeros((HORIZON, SUBPERIOD))
     for t in np.arange(HORIZON):
-        zCoef[t] = (prob ** t) * SUBPERIOD_HOUR / (1 + rate) ** t
+        zCoef[t] = (prob ** t) * SUBPERIOD_HOUR * PENALTY_COST / (1 + rate) ** t
     
     myFile = open(treeDataDir + "zCoef.dat", "w")
     myFile.write("[")

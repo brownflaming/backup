@@ -32,8 +32,8 @@ OBJ_FILE = $(OBJ_DIR)/saa.o
 
 all: saa
 
-siddp: $(OBJ_FILE)
+saa: $(OBJ_FILE)
 	$(CCC) $(CCFLAGS) $(OBJ_FILE) -o $(OUT_RELEASE) $(CCLNFLAGS)
 
-$(OBJ_DIR)/siddp.o: saa.cpp
+$(OBJ_DIR)/saa.o: saa.cpp
 	$(CCC) -c $(CCFLAGS) saa.cpp -o $(OBJ_DIR)/saa.o
