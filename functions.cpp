@@ -364,8 +364,8 @@ void forward (Model * models, formatData * fData_p, const IloNumArray3 samplePat
 } // End of forward pass to generate candidate solutions
 
 void backward (Model * models, formatData * fData_p, const IloNumArray3 candidateSol,
-		IloNumArray & lb, unordered_set<string> & masterSol, const bool bendersFlag,
-		const bool integerFlag)
+		IloNumArray & lb, unordered_set<string> & masterSol,
+		const bool bendersFlag, const bool impvdBendersFlag, const bool integerFlag)
 {
 	cout << "================================" << endl;
 	cout << "Start the backward process..." << endl;
@@ -399,9 +399,9 @@ void backward (Model * models, formatData * fData_p, const IloNumArray3 candidat
 		for ( auto it = uniqueSol.begin(); it != uniqueSol.end(); ++it )  // 
 		{
 			// cout << "Total number of scenarios at this stage: " << fData_p->numScen[t] << endl;
-			// create arrays to store MIP and LP optimal values
+			// create arrays to store MIP, Lagrangian with optimal LP dual, and LP optimal values
 			IloNumArray scenMIPobj(fData_p->dataEnv);
-			
+			IloNumArray scenLGRobj(fData_p->dataEnv);
 			IloNumArray scenLPobj(fData_p->dataEnv);
 			IloNumArray vals(fData_p->dataEnv, constr2Size);
 			// IloNumArray dualAvg(fData_p->dataEnv, constr2Size);
@@ -451,7 +451,7 @@ void backward (Model * models, formatData * fData_p, const IloNumArray3 candidat
 					}
 				}
 
-				if ( bendersFlag )
+				if ( bendersFlag + impvdBendersFlag )
 				{
 					// solve models[t] LP relaxation
 					IloConversion relaxVarX(models[t].env, models[t].x, ILOFLOAT);
@@ -474,11 +474,29 @@ void backward (Model * models, formatData * fData_p, const IloNumArray3 candidat
 						{
 							// record objective function value
 							scenLPobj.add(models[t].cplex.getObjValue());
-							// cout << models[t].mod << endl;
-							// cout << models[t].x[1].getType() << endl;
+							// record optimal dual multipliers
 							models[t].cplex.getDuals(vals, models[t].constr2);
 							for (i = 0; i < vals.getSize(); ++i)
 								dualAvg[i] += vals[i] / fData_p->numScen[t];
+							
+							// change model back to MIP
+							relaxVarX.end();
+							relaxVarY.end();
+							relaxVarZ.end();
+
+							// continue to solve Lagrangian if impvdBendersFlag is 1
+							if ( impvdBendersFlag )
+							{
+								// clone model models[t].mod
+								Model LGRmodel = IloGetClone(models[t].env, models[t]);
+								// change objective funtion by adding terms \pi_LP' z
+								LGRmodel.obj.setExpr( LGRmodel.obj.getExpr() + IloScalProd(vals, LGRmodel.z) );
+								// remove constraints z_t = x_{t-1} from new model
+								LGRmodel.mod.remove(LGRmodel.constr2);
+								// solve new model
+								if ( LGRmodel.cplex.solve() )
+									scenLGRobj.add(LGRmodel.cplex.getObjValue()); // record optimal objective function value
+							}
 						}
 						else // not optimal
 						{
@@ -492,10 +510,6 @@ void backward (Model * models, formatData * fData_p, const IloNumArray3 candidat
 						throw ("LP has no solution...");
 					}
 			
-					// change model back to MIP
-					relaxVarX.end();
-					relaxVarY.end();
-					relaxVarZ.end();
 				}
 			} // End of loop over all scenarios in stage t
 
@@ -524,7 +538,7 @@ void backward (Model * models, formatData * fData_p, const IloNumArray3 candidat
 			}
 
 			// construct and add Benders cut
-			if ( bendersFlag )
+			if ( bendersFlag + impvdBendersFlag )
 			{
 				IloExpr expr(models[t-1].env);
 				expr = models[t-1].theta;
@@ -532,19 +546,25 @@ void backward (Model * models, formatData * fData_p, const IloNumArray3 candidat
 				{
 					expr -= dualAvg[i] * models[t-1].x[i];
 				}
-				rhs = IloSum(scenLPobj) / fData_p->numScen[t] - inner_product(dualAvg.begin(), dualAvg.end(), (*it).begin(), 0);
+				if ( impvdBendersFlag )
+					rhs = IloSum(scenLGRobj) / fData_p->numScen[t] - inner_product(dualAvg.begin(), dualAvg.end(), (*it).begin(), 0);
+				else
+					rhs = IloSum(scenLPobj) / fData_p->numScen[t] - inner_product(dualAvg.begin(), dualAvg.end(), (*it).begin(), 0);
 				models[t-1].cuts.add(expr >= rhs);
 				models[t-1].mod.add(expr >= rhs);
-				cout << "Benders cut added." << endl;
+				if ( impvdBendersFlag )
+					cout << "Improved Benders' cut added." << endl;
+				else
+					cout << "Benders' cut added." << endl;
 				expr.end();
 			}
 
 			// free momery
 			scenMIPobj.end();
-			if ( bendersFlag )
+			if ( bendersFlag + impvdBendersFlag )
 			{
 				scenLPobj.end();
-				//dualAvg.end();
+				scenLGRobj.end();
 				vals.end();
 				dualAvg.clear();
 			}

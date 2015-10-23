@@ -38,20 +38,21 @@ int main (int argc, char *argv[])
       	else
       		default_random_engine generator (atoi(argv[1]));
       	*/
-		if ( argc != 2 && argc != 3 )
+		if ( argc != 3 && argc != 4 )
 		{
 			usage (argv[0]);
 			throw (-1);
 		}
 
 		const bool bendersFlag = atoi(argv[1]);
+		const bool impvdBendersFlag = atoi(argv[2]);
 		bool integerFlag = 1;
-		if ( bendersFlag )
+		if ( bendersFlag + impvdBendersFlag )
 			integerFlag = 0;
 
 		unsigned long long seed;
-		if ( argc == 3 )
-			seed = atoi(argv[2]);
+		if ( argc == 4 )
+			seed = atoi(argv[3]);
 		else
 			seed = chrono::system_clock::now().time_since_epoch().count();
 		init_genrand64(seed);
@@ -156,7 +157,7 @@ int main (int argc, char *argv[])
 
 			cout << "L-shaped cuts: " << integerFlag << endl;
 
-			backward(models, fData_p, candidateSol, lb, masterSol, bendersFlag, integerFlag);
+			backward(models, fData_p, candidateSol, lb, masterSol, bendersFlag, impvdBendersFlag, integerFlag);
 
 			cout << "Backward pass completed." << endl;
 			cout << "================================" << endl;
