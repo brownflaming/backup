@@ -138,7 +138,7 @@ void buildModel (Model * models, formatData * fData_p)
 		models[t].mod.add(models[t].y2);
 		
 		
-		models[t].z = IloNumVarArray(currentEnv, z_dim, 0.0, 1.0, ILOINT);
+		models[t].z = IloNumVarArray(currentEnv, z_dim, 0.0, 1.0, ILOFLOAT);
 		for ( i = 0; i < z_dim; ++i )
 		{
 			sprintf(varName, "z_%d", i+1);
@@ -456,10 +456,8 @@ void backward (Model * models, formatData * fData_p, const IloNumArray3 candidat
 					// solve models[t] LP relaxation
 					IloConversion relaxVarX(models[t].env, models[t].x, ILOFLOAT);
 					IloConversion relaxVarY(models[t].env, models[t].y1, ILOFLOAT);
-					IloConversion relaxVarZ(models[t].env, models[t].z, ILOFLOAT);
 					models[t].mod.add(relaxVarX);
 					models[t].mod.add(relaxVarY);
-					models[t].mod.add(relaxVarZ);
 
 					// solve models[t] as a LP
 					//cout << "problem changed to LP? " << !(models[t].cplex.isMIP()) << endl;
@@ -482,20 +480,64 @@ void backward (Model * models, formatData * fData_p, const IloNumArray3 candidat
 							// change model back to MIP
 							relaxVarX.end();
 							relaxVarY.end();
-							relaxVarZ.end();
 
 							// continue to solve Lagrangian if impvdBendersFlag is 1
 							if ( impvdBendersFlag )
 							{
-								// clone model models[t].mod
-								Model LGRmodel = IloGetClone(models[t].env, models[t]);
-								// change objective funtion by adding terms \pi_LP' z
-								LGRmodel.obj.setExpr( LGRmodel.obj.getExpr() + IloScalProd(vals, LGRmodel.z) );
-								// remove constraints z_t = x_{t-1} from new model
-								LGRmodel.mod.remove(LGRmodel.constr2);
+								// create a new model with models[t].env
+								IloModel modelLGR(models[t].env);
+
+								// add variables and constr1
+								modelLGR.add(models[t].x);
+								modelLGR.add(models[t].y1);
+								modelLGR.add(models[t].y2);
+								modelLGR.add(models[t].z);
+								modelLGR.add(models[t].theta);
+								modelLGR.add(models[t].constr1);
+								modelLGR.add(models[t].cuts);
+
+								// create new objective function with additional term \pi_LP' z
+								IloObjective newObj = IloMinimize(models[t].env);
+								IloExpr expr(models[t].env);
+								expr += IloScalProd(fData_p->xCoef[t], models[t].x);
+								expr += IloScalProd(fData_p->y1Coef[t], models[t].y1);
+								expr += IloScalProd(fData_p->y2Coef[t], models[t].y2);
+								expr += models[t].theta;
+								expr -= IloScalProd(vals, models[t].z);
+								newObj.setExpr(expr);
+								modelLGR.add(newObj);
+
+								// create cplex algorithm for this model
+								IloCplex cplexLGR(modelLGR);
+								char fileName[100];
+								sprintf(fileName, "LGmodel_%d.lp", t);
+								// cplexLGR.exportModel(fileName);
+								cplexLGR.setOut(models[t].env.getNullStream());
+
 								// solve new model
-								if ( LGRmodel.cplex.solve() )
-									scenLGRobj.add(LGRmodel.cplex.getObjValue()); // record optimal objective function value
+								if ( cplexLGR.solve() )
+								{
+									double consObj = 0;
+									for ( i = 0; i < vals.getSize(); ++i )
+										consObj += vals[i] * (*it)[i];
+								//	cout << consObj << endl;
+									scenLGRobj.add(cplexLGR.getObjValue() + consObj);
+								}
+								// cout << "vals: " << vals << endl;
+								// cout << "LP relaxation optimal value: " << scenLPobj << endl;
+								// cout << "LG relaxation optimal value: " << scenLGRobj << endl;
+
+								//system("read");
+
+								//cout << models[t].mod << endl;;
+								//system("read");
+								//cout << modelLGR << endl;
+								//system("read");
+
+								// release memory
+								expr.end();
+								newObj.end();
+								modelLGR.end();
 							}
 						}
 						else // not optimal
@@ -585,7 +627,7 @@ void backward (Model * models, formatData * fData_p, const IloNumArray3 candidat
 	{
 		// get solution status
 		solStatus = models[0].cplex.getStatus();
-		cout << "solution status obtained." << endl;
+		// cout << "solution status obtained." << endl;
 
 		if ( solStatus == IloAlgorithm::Optimal )
 		{
@@ -593,7 +635,7 @@ void backward (Model * models, formatData * fData_p, const IloNumArray3 candidat
 			lb.add(models[0].cplex.getObjValue());
 			IloNumArray vals(fData_p->dataEnv, models[0].x.getSize());
 			models[0].cplex.getValues(vals, models[0].x);
-			cout << "solution value obtained." << endl;
+			// cout << "solution value obtained." << endl;
 			for ( i = 0; i < vals.getSize(); ++i )
 				vals[i] = round(vals[i]);
 			masterSol.insert(toString(vals));

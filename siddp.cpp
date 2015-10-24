@@ -201,7 +201,7 @@ int main (int argc, char *argv[])
 				i.e., variance of the last five lower bounds is small enough
 			*/
 			
-			if ( iteration > 10 )
+			if ( iteration > 6 )
 			{
 				vector<float> recentLB;
 				for ( int i = 1; i < 6; ++i )
@@ -234,13 +234,14 @@ int main (int argc, char *argv[])
 		double runtime = elapsed_seconds.count();
 		printf("Total running time %.2f seconds.\n", runtime);
 
-		ofstream output ("result.txt", ios::out | ios::app);
+		ofstream output ("result_impvd.txt", ios::out | ios::app);
 		if ( output.is_open() )
 		{
 			output << "==================================================" << endl;
 			output << "==================================================" << endl;
 			output << "time horizon: " << fData.numStage << endl;
 			output << "Benders cut: " << bendersFlag << endl;
+			output << "Improved Benders cut: " << impvdBendersFlag << endl;
 			output << "FW sample paths: " << initSampleSize << endl;
 			output << "total iterations: " << iteration << endl;
 			output << "total time elapsed: " << runtime << " seconds." << endl;
