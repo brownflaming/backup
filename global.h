@@ -44,7 +44,8 @@ struct formatData
 	IloNumArray3 W2matrix; // W2_t at each stage
 	IloNumArray2 bRhs;  // b_t: rhs at each stage (some components are uncertain)
 	IloIntArray uncertainIndex; // an array that contains the indices for uncertain parameters in b_t
-	IloNumArray3 scenarios; // available scenarios at each stage (dim1: T; dim2: numScen[t])
+	IloNumArray3 scenarios; // available rhs scenarios at each stage (dim1: T; dim2: numScen[t])
+	IloNumArray3 y2Scenarios; // available y2 obj coefficient scenarios at each stage (dim1: T; dim2: numScen[t])
 };
 
 struct Model

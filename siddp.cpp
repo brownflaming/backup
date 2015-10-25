@@ -91,8 +91,10 @@ int main (int argc, char *argv[])
 
 		IloInt iteration = 0; // iteration counter
 
-		// create an array to store the sampled paths in the forward pass
+		// create an array to store the sampled paths (rhs) in the forward pass
 		IloNumArray3 samplePaths(fData.dataEnv);
+		// create an array to store the sampled paths (coeff) in the forward pass
+		IloNumArray3 coefSamplePaths(fData.dataEnv);
 
 		// create an array to store the candidate solutions corrsp. to the sampled paths
 		IloNumArray3 candidateSol(fData.dataEnv);
@@ -123,12 +125,12 @@ int main (int argc, char *argv[])
 			cout << "Iteration: " << iteration << endl;
 
 			//getSamplePaths(samplePaths, fData_p, unif, generator);
-			getSamplePaths(samplePaths, fData_p);
+			getSamplePaths(samplePaths, coefSamplePaths, fData_p);
 			
 			cout << "Forward sample paths obtained." << endl;
 			cout << "================================" << endl;
 
-			forward(models, fData_p, samplePaths, candidateSol, ub_c, ub_l, ub_r);
+			forward(models, fData_p, samplePaths, coefSamplePaths, candidateSol, ub_c, ub_l, ub_r);
 
 			cout << "Forward pass completed." << endl;
 			cout << "================================" << endl;

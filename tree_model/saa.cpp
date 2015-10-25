@@ -6,6 +6,7 @@ ILOSTLBEGIN
 typedef IloArray<IloIntVarArray> IloIntVarArray2;
 typedef IloArray<IloNumVarArray> IloNumVarArray2;
 typedef IloArray<IloNumVarArray2> IloNumVarArray3;
+typedef IloArray<IloNumArray3> IloNumArray4;
 typedef IloArray<IloNumArray2> IloNumArray3;
 
 template <class T>
@@ -28,7 +29,7 @@ int main ()
 		cout << "Reading data from files..." << endl;
 		IloInt numStage, numGen, numSub, numChi, numNode;
 		IloNumArray2 xCoef(env);     // [numStage][numGen];
-		IloNumArray3 yCoef(env);     // [numStage][numSub][numGen]
+		IloNumArray4 yCoef(env);     // [numStage][numScen][numSub][numGen]
 		IloNumArray2 zCoef(env);     // [numStage][numSub]
 		IloNumArray maxOutput(env);  // [numGen]
 		IloNumArray maxUnit(env);    // [numGen]
@@ -40,7 +41,7 @@ int main ()
 		readArray<IloInt> (numSub, "data/numSub.dat");
 		readArray<IloInt> (numChi, "data/numChi.dat");
 		readArray<IloNumArray2> (xCoef, "data/xCoef.dat");
-		readArray<IloNumArray3> (yCoef, "data/yCoef.dat");
+		readArray<IloNumArray4> (yCoef, "data/yCoef.dat");
 		readArray<IloNumArray2> (zCoef, "data/zCoef.dat");
 		readArray<IloNumArray> (maxOutput, "data/maxOutput.dat");
 		readArray<IloNumArray> (maxUnit, "data/maxUnit.dat");
@@ -79,8 +80,16 @@ int main ()
 			for ( n = (pow(numChi, t) - 1) / (numChi - 1) ; n < (pow(numChi, t+1) - 1) / (numChi - 1); ++n )
 			{
 				objExpr += IloScalProd(xCoef[t], x[n]);
-				for ( k = 0; k < numSub; ++k )
-					objExpr += IloScalProd(yCoef[t][k], y[n][k]);
+				if ( t == 0 )
+				{
+					for ( k = 0; k < numSub; ++k )
+						objExpr += IloScalProd(yCoef[t][0][k], y[n][k])
+				}
+				else
+				{
+					for ( k = 0; k < numSub; ++k )
+						objExpr += IloScalProd(yCoef[t][(n-1)%numChi][k], y[n][k]);
+				}
 				objExpr += IloScalProd(zCoef[t], z[n]);
 			}
 		}

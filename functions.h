@@ -36,7 +36,7 @@ void readData (formatData * fData_p);
 
 void buildModel (Model * models, formatData * fData_p);
 
-void getSamplePaths (IloNumArray3& samplePaths, formatData * fData_p);
+void getSamplePaths (IloNumArray3& samplePaths, IloNumArray3 & coefSamplePaths, formatData * fData_p);
 
 void forward (Model * models, formatData * fData_p, const IloNumArray3 samplePaths,
 		IloNumArray3 & candidateSol, IloNumArray & ub, IloNumArray & ub_l, IloNumArray & ub_r);

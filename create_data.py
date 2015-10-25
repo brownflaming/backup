@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import numpy as np
+from scipy.stats import truncnorm
 import os
 
 if __name__ == "__main__":
@@ -14,7 +15,7 @@ if __name__ == "__main__":
     CONSTRUCTION_COST = np.array([1.446, 0.795, 0.575, 1.613, 1.650, 1.671])
     MAX_CAPACITY = np.array([1200.0, 400.0, 400.0, 1200.0, 500.0, 600.0])
 
-    FUEL_PRICE = np.array([3.37, 9.11 * 1e-6 / 1.028, 9.11 * 1e-6 / 1.028, 0.93e-3, 0, 3.37]) * 1e-6
+    FUEL_PRICE = np.array([3.37, 9.37, 9.37, 0.93e-3, 0, 3.37]) * 1e-6
     RATIO = [8.844 / 0.4, 7.196 / 0.56, 10.842 / 0.4, 10.400 / 0.45, 0.0, 8.613 / 0.48]
     FUEL_PRICE_GROWTH = 0.02
     OPERATING_COST = np.array([4.7, 2.11, 3.66, 0.51, 5.00, 2.98]) * 1e-6
@@ -23,6 +24,9 @@ if __name__ == "__main__":
     LAMBDA = np.array([1.38, 1.04, 0.80])
     HOURS_PER_YEAR = 8760.0
     rate = 0.08     # interest rate
+
+	price_mean = np.array([9.37000, 9.79257, 10.23477, 10.69770, 11.18226, 11.68951, 12.22057, 12.77657, 13.35693, 13.96636])
+	price_std = np.array([0.0, 0.9477973, 1.2146955, 1.4957925, 1.7848757, 2.0798978, 2.3814051, 2.6911019, 3.0063683, 3.3382216])
 
     nType = len(GENERATOR_LIST)     # number of technology
     nUnit = sum(MAX_UNIT)           # sum of maximum construction
@@ -54,6 +58,13 @@ if __name__ == "__main__":
             temp = np.concatenate((temp, -temp))
             scenarios[t][j] = list(temp)
 
+	price = [[0] * numScen[t] for t in xrange(HORIZON)]
+	price[0][0] = price_mean[0] * 1e-12 / 1.028
+	
+	for t in xrange(1, HORIZON):
+		sample = (price_mean[t] + price_std[t] * truncnorm.rvs(-1, 1, size=numScen[t])) * 1e-12 / 1.028
+		price[t] = list(sample)
+		
     ''' Parameters used by tree model '''
 
     treeDataDir = "tree_model/data_" + str(HORIZON) + "/"
@@ -133,34 +144,22 @@ if __name__ == "__main__":
     myFile.close()
 
     # yCoef of tree model
-    yCoef = np.zeros((HORIZON, nType * SUBPERIOD))
+    yCoef = []
     for t in np.arange(HORIZON):
-        for k in np.arange(SUBPERIOD):
-            temp = np.multiply(FUEL_PRICE, RATIO) * (1 + FUEL_PRICE_GROWTH) ** t + \
-                   OPERATING_COST * (1 + OPER_COST_GROWTH) ** t
-            temp = (prob ** t) * SUBPERIOD_HOUR[k] * temp / (1 + rate) ** t
-            yCoef[t, k * nType: (k + 1) * nType] = temp
-    yCoef = yCoef.reshape(HORIZON, SUBPERIOD, nType)
-
+    	yCoef_t = [ [0] * SUBPERIOD for n in xrange(numScen[t]) ]
+    	for n in xrange(numScen[t]):
+        	for k in xrange(SUBPERIOD):
+            	temp = np.multiply(FUEL_PRICE, RATIO) * (1 + FUEL_PRICE_GROWTH) ** t
+            	for i in [1, 2]:
+                	temp[i] = price[t][n]
+            	temp = temp + OPERATING_COST * (1 + OPER_COST_GROWTH) ** t
+            	temp = (prob ** t) * SUBPERIOD_HOUR[k] * temp / (1 + rate) ** t
+            	yCoef_t[n][k] = (list(temp))
+    	yCoef.append(yCoef_t)
+            
     myFile = open(treeDataDir + "yCoef.dat", "w")
-    myFile.write("[")
-    for t in xrange(yCoef.shape[0]):
-        myFile.write("[")
-        for k in xrange(yCoef.shape[1]):
-            myFile.write("[")
-            for i in xrange(yCoef.shape[2]):
-                myFile.write(str(yCoef[t, k, i]))
-                if i != yCoef.shape[2] - 1:
-                    myFile.write(",")
-            myFile.write("]")
-            if k != yCoef.shape[1] - 1:
-                myFile.write(",")
-        myFile.write("]")
-        if t != yCoef.shape[0] - 1:
-            myFile.write(",")
-    myFile.write("]")
+    myFile.write(str(yCoef))
     myFile.close()
-
 
     # zCoef of tree model
     zCoef = np.zeros((HORIZON, SUBPERIOD))
@@ -233,6 +232,20 @@ if __name__ == "__main__":
     myFile.write(str(scenarios))
     myFile.close()
 
+    # y2Coef scenarios
+    y2Scenarios = [ [0] * numScen[t] for t in xrange(HORIZON) ]
+    for t in xrange(HORIZON):
+    	for n in xrange(numScen[t]):
+    		temp = [];
+    		for k in xrange(SUBPERIOD):
+    			temp += yCoef[t][n][k]
+    			temp.append(zCoef[t][k])
+    		y2Scenarios[t][n] = temp
+
+    myFile = open(dataDir + "y2Scenarios.dat", "w")
+    myFile.write(str(y2Scenarios))
+    myFile.close()
+
     ''' Construct data for objective function c x + b1 y1 + b2 y2 '''
     # construct c (coefficients for x state variabls)
     # doesn't show up in objective funcion, thus all zeros
@@ -276,14 +289,10 @@ if __name__ == "__main__":
     myFile.close()
 
     # construct b2 (coefficients for y2 continuous variables
+    # by default, we choose the first scenario to construct the problem
     y2Coef = np.zeros((HORIZON, SUBPERIOD * (nType + 1)))
     for t in np.arange(HORIZON):
-        for k in np.arange(SUBPERIOD):
-            temp = np.multiply(FUEL_PRICE, RATIO) * (1 + FUEL_PRICE_GROWTH) ** t + \
-                   OPERATING_COST * (1 + OPER_COST_GROWTH) ** t
-            temp = np.append(temp, PENALTY_COST)
-            temp = SUBPERIOD_HOUR[k] * temp / (1 + rate) ** t
-            y2Coef[t, k * (nType + 1): (k + 1) * (nType + 1)] = temp
+        y2Coef[t] = y2Scenarios[t][0]
 
     print "y2.shape", y2Coef.shape
 
@@ -440,14 +449,22 @@ if __name__ == "__main__":
     myFile.write("]")
     myFile.close()
 
-    # uncertain indices
-    uncertainIndex = np.arange(rhs.shape[0] - 6, rhs.shape[0])
+    # uncertain indices for the rhs
+    uncertainIndexRHS = np.arange(rhs.shape[0] - 6, rhs.shape[0])
 
-    myFile = open(dataDir + "uncertainIndex.dat", "w")
+    myFile = open(dataDir + "uncertainIndexRHS.dat", "w")
     myFile.write("[")
-    for i in xrange(uncertainIndex.shape[0]):
-        myFile.write(str(uncertainIndex[i]))
-        if i != uncertainIndex.shape[0] - 1:
+    for i in xrange(uncertainIndexRHS.shape[0]):
+        myFile.write(str(uncertainIndexRHS[i]))
+        if i != uncertainIndexRHS.shape[0] - 1:
             myFile.write(",")
     myFile.write("]")
     myFile.close()
+
+    # uncertain indices for y2 variables
+    uncertainIndexY2 = [1,2,,7,8,13,14]
+    myFile = open(dataDir + "uncertainIndexY2.dat", "w")
+    myFile.write(str(uncertainIndexY2))
+    myFile.close()
+
+

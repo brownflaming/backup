@@ -82,10 +82,15 @@ void readData (formatData * fData_p)
 	fData_p->uncertainIndex = IloIntArray(*dataEnv, numStage);
 	readArray<IloIntArray> (fData_p->uncertainIndex, "data/uncertainIndex.dat");
 
-	// read generated scenarios at each stage
+	// read generated rhs scenarios at each stage
 	// dim1: numStage; dim2: numScen[t]; dim3: uncertainIndex.getSize()
 	fData_p->scenarios = IloNumArray3(*dataEnv, numStage);
 	readArray<IloNumArray3> (fData_p->scenarios, "data/scenarios.dat");
+
+	// read generated y2 coefficient scenarios at each stage
+	// dim1: numStage; dim2: numScen[t]; dim3: nType * SUBPERIOD
+	fData_p->y2Scenarios = IloNumArray3(*dataEnv, numStage);
+	readArray<IloNumArray3> (fData_p->scenarios, "data/y2Scenarios.dat");
 
 	return;
 } // End of readData
@@ -223,7 +228,7 @@ void buildModel (Model * models, formatData * fData_p)
 	return;
 } // End of function buildModel
 
-void getSamplePaths (IloNumArray3 & samplePaths, formatData * fData_p)
+void getSamplePaths (IloNumArray3 & samplePaths, IloNumArray3 & coefSamplePaths, formatData * fData_p)
 {
 	// cout << "Sampling forward paths from scenarios..." << endl;
 	IloEnv * currentEnv = &(fData_p->dataEnv);
@@ -238,6 +243,8 @@ void getSamplePaths (IloNumArray3 & samplePaths, formatData * fData_p)
 		// initialize each sample path
 		samplePaths.add(IloNumArray2(*currentEnv));
 		samplePaths[p].add(fData_p->scenarios[0][0]);
+		coefSamplePaths.add(IloNumArray2(*currentEnv));
+		coefSamplePaths[p].add(fData_p->y2Scenarios[0][0]);
 
 		// draw sample from each stage
 		for (int t = 1; t < numStage; ++t)
@@ -250,6 +257,7 @@ void getSamplePaths (IloNumArray3 & samplePaths, formatData * fData_p)
 			// cout << int(U/pdf) << ",";
 			// cout << "scenario chosen: " << int(U/pdf) << endl;
 			samplePaths[p].add(fData_p->scenarios[t][int(U/pdf)]);
+			coefSamplePaths[p].add(fData_p->y2Scenarios[t][int(U/pdf)]);
 
 		} // End of stage for-loop
 		// cout << " " << endl;
@@ -257,7 +265,7 @@ void getSamplePaths (IloNumArray3 & samplePaths, formatData * fData_p)
 	return;
 } // End of getSamplePathss
 
-void forward (Model * models, formatData * fData_p, const IloNumArray3 samplePaths,
+void forward (Model * models, formatData * fData_p, const IloNumArray3 samplePaths, const IloNumArray3 coefSamplePaths,
 			  IloNumArray3 & candidateSol, IloNumArray & ub_c, IloNumArray & ub_l, IloNumArray & ub_r)
 {
 	cout << "Start the forward process..." << endl;
@@ -289,6 +297,9 @@ void forward (Model * models, formatData * fData_p, const IloNumArray3 samplePat
 			// cout << "Stage t = " << t << endl;
 			if ( t > 0 )
 			{
+				// update objective coefficients
+				models[t].obj.setLinearCoefs(models[t].y2, coefSamplePaths[p][t]);
+
 				// update b_t with samplePaths[p][t]
 				for ( i = 0; i < uncertainArraySize; ++i )
 				{
@@ -410,6 +421,9 @@ void backward (Model * models, formatData * fData_p, const IloNumArray3 candidat
 			for ( k = 0; k < fData_p->numScen[t]; ++k )  // for each scenario at stage t
 			{
 				// cout << "scenario " << k << " in stage " << t << endl;
+				// update y2 coefficient with y2Scenarios[t][k]
+				models[t].obj.setLinearCoefs(models[t].y2, y2Scenarios[t][k]);
+
 				// update b_t with scenarios[t][k]
 				for ( i = 0; i < uncertainArraySize; ++i )
 				{
@@ -654,7 +668,6 @@ void backward (Model * models, formatData * fData_p, const IloNumArray3 candidat
 	}
 
 } // End of backward pass to refine value functions
-
 
 
 double avg ( vector<float> & v )
