@@ -128,6 +128,11 @@ int main (int argc, char *argv[])
 			getSamplePaths(samplePaths, coefSamplePaths, fData_p);
 			
 			cout << "Forward sample paths obtained." << endl;
+
+			cout << coefSamplePaths << endl;
+
+			system("read");
+			
 			cout << "================================" << endl;
 
 			forward(models, fData_p, samplePaths, coefSamplePaths, candidateSol, ub_c, ub_l, ub_r);
