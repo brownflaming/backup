@@ -6,8 +6,8 @@ ILOSTLBEGIN
 typedef IloArray<IloIntVarArray> IloIntVarArray2;
 typedef IloArray<IloNumVarArray> IloNumVarArray2;
 typedef IloArray<IloNumVarArray2> IloNumVarArray3;
-typedef IloArray<IloNumArray3> IloNumArray4;
 typedef IloArray<IloNumArray2> IloNumArray3;
+typedef IloArray<IloNumArray3> IloNumArray4;
 
 template <class T>
 inline void readArray (T & target, const char * fileName)
