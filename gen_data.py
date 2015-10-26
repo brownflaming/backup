@@ -5,7 +5,7 @@ import os
 
 if __name__ == "__main__":
 
-    HORIZON = 5
+    HORIZON = 10
     GENERATOR_LIST = {0: 'BaseLoad', 1: 'CC', 2: 'CT', 3: 'Nuclear', 4: 'Wind', 5: 'IGCC'}
     MAX_OUTPUT = np.array([1130.0, 390.0, 380.0, 1180.0, 175.0, 560.0])
     MAX_UNIT = np.array([4, 10, 10, 1, 45, 4], np.int32)
@@ -24,10 +24,10 @@ if __name__ == "__main__":
     LAMBDA = np.array([1.38, 1.04, 0.80])
     HOURS_PER_YEAR = 8760.0
     rate = 0.08     # interest rate
-    price_mean = np.ones(HORIZON) * 9.37
-    #price_mean = np.array([9.37000, 9.79257, 10.23477, 10.69770, 11.18226, 11.68951, 12.22057, 12.77657, 13.35693, 13.96636])
-    #price_std = np.array([0.0, 0.9477973, 1.2146955, 1.4957925, 1.7848757, 2.0798978, 2.3814051, 2.6911019, 3.0063683, 3.3382216])
-    price_std = np.zeros(HORIZON)
+    #price_mean = np.ones(HORIZON) * 9.37
+    price_mean = np.array([9.37000, 9.79257, 10.23477, 10.69770, 11.18226, 11.68951, 12.22057, 12.77657, 13.35693, 13.96636])
+    price_std = np.array([0.0, 0.9477973, 1.2146955, 1.4957925, 1.7848757, 2.0798978, 2.3814051, 2.6911019, 3.0063683, 3.3382216])
+    #price_std = np.zeros(HORIZON)
 
 
     nType = len(GENERATOR_LIST)     # number of technology
@@ -242,7 +242,7 @@ if __name__ == "__main__":
     		temp = [];
     		for k in xrange(SUBPERIOD):
     			temp = temp + list(np.array(yCoef[t][n][k]) * (np.reciprocal(prob) ** t))
-    			temp.append(zCoef[t][k])
+    			temp.append(zCoef[t][k] * (prob ** (-t)))
     		y2Scenarios[t][n] = temp
 
     myFile = open(dataDir + "y2Scenarios.dat", "w")

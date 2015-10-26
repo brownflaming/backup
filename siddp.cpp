@@ -128,10 +128,6 @@ int main (int argc, char *argv[])
 			getSamplePaths(samplePaths, coefSamplePaths, fData_p);
 			
 			cout << "Forward sample paths obtained." << endl;
-
-			cout << coefSamplePaths << endl;
-
-			system("read");
 			
 			cout << "================================" << endl;
 
