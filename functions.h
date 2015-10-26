@@ -38,7 +38,7 @@ void buildModel (Model * models, formatData * fData_p);
 
 void getSamplePaths (IloNumArray3& samplePaths, IloNumArray3 & coefSamplePaths, formatData * fData_p);
 
-void forward (Model * models, formatData * fData_p, const IloNumArray3 samplePaths,
+void forward (Model * models, formatData * fData_p, const IloNumArray3 samplePaths, const IloNumArray3 coefSamplePaths,
 		IloNumArray3 & candidateSol, IloNumArray & ub, IloNumArray & ub_l, IloNumArray & ub_r);
 
 void backward (Model * models, formatData * fData_p, const IloNumArray3 candidateSol,

@@ -90,7 +90,7 @@ void readData (formatData * fData_p)
 	// read generated y2 coefficient scenarios at each stage
 	// dim1: numStage; dim2: numScen[t]; dim3: nType * SUBPERIOD
 	fData_p->y2Scenarios = IloNumArray3(*dataEnv, numStage);
-	readArray<IloNumArray3> (fData_p->scenarios, "data/y2Scenarios.dat");
+	readArray<IloNumArray3> (fData_p->y2Scenarios, "data/y2Scenarios.dat");
 
 	return;
 } // End of readData
@@ -243,8 +243,12 @@ void getSamplePaths (IloNumArray3 & samplePaths, IloNumArray3 & coefSamplePaths,
 		// initialize each sample path
 		samplePaths.add(IloNumArray2(*currentEnv));
 		samplePaths[p].add(fData_p->scenarios[0][0]);
+		// cout << "good here" << endl;
+		// cout << fData_p->y2Scenarios[0][0] << endl;
 		coefSamplePaths.add(IloNumArray2(*currentEnv));
 		coefSamplePaths[p].add(fData_p->y2Scenarios[0][0]);
+		// cout << "good here" << endl;
+		
 
 		// draw sample from each stage
 		for (int t = 1; t < numStage; ++t)
@@ -422,7 +426,7 @@ void backward (Model * models, formatData * fData_p, const IloNumArray3 candidat
 			{
 				// cout << "scenario " << k << " in stage " << t << endl;
 				// update y2 coefficient with y2Scenarios[t][k]
-				models[t].obj.setLinearCoefs(models[t].y2, y2Scenarios[t][k]);
+				models[t].obj.setLinearCoefs(models[t].y2, fData_p->y2Scenarios[t][k]);
 
 				// update b_t with scenarios[t][k]
 				for ( i = 0; i < uncertainArraySize; ++i )
@@ -515,7 +519,7 @@ void backward (Model * models, formatData * fData_p, const IloNumArray3 candidat
 								IloExpr expr(models[t].env);
 								expr += IloScalProd(fData_p->xCoef[t], models[t].x);
 								expr += IloScalProd(fData_p->y1Coef[t], models[t].y1);
-								expr += IloScalProd(fData_p->y2Coef[t], models[t].y2);
+								expr += IloScalProd(fData_p->y2Scenarios[t][k], models[t].y2);
 								expr += models[t].theta;
 								expr -= IloScalProd(vals, models[t].z);
 								newObj.setExpr(expr);

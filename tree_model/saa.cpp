@@ -83,7 +83,7 @@ int main ()
 				if ( t == 0 )
 				{
 					for ( k = 0; k < numSub; ++k )
-						objExpr += IloScalProd(yCoef[t][0][k], y[n][k])
+						objExpr += IloScalProd(yCoef[t][0][k], y[n][k]);
 				}
 				else
 				{
