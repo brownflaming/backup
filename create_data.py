@@ -5,7 +5,7 @@ import os
 
 if __name__ == "__main__":
 
-    HORIZON = 6
+    HORIZON = 10
     GENERATOR_LIST = {0: 'BaseLoad', 1: 'CC', 2: 'CT', 3: 'Nuclear', 4: 'Wind', 5: 'IGCC'}
     MAX_OUTPUT = np.array([1130.0, 390.0, 380.0, 1180.0, 175.0, 560.0])
     MAX_UNIT = np.array([4, 10, 10, 1, 45, 4], np.int32)
@@ -24,9 +24,8 @@ if __name__ == "__main__":
     LAMBDA = np.array([1.38, 1.04, 0.80])
     HOURS_PER_YEAR = 8760.0
     rate = 0.08     # interest rate
-
-	price_mean = np.array([9.37000, 9.79257, 10.23477, 10.69770, 11.18226, 11.68951, 12.22057, 12.77657, 13.35693, 13.96636])
-	price_std = np.array([0.0, 0.9477973, 1.2146955, 1.4957925, 1.7848757, 2.0798978, 2.3814051, 2.6911019, 3.0063683, 3.3382216])
+    price_mean = np.array([9.37000, 9.79257, 10.23477, 10.69770, 11.18226, 11.68951, 12.22057, 12.77657, 13.35693, 13.96636])
+    price_std = np.array([0.0, 0.9477973, 1.2146955, 1.4957925, 1.7848757, 2.0798978, 2.3814051, 2.6911019, 3.0063683, 3.3382216])
 
     nType = len(GENERATOR_LIST)     # number of technology
     nUnit = sum(MAX_UNIT)           # sum of maximum construction
@@ -148,14 +147,15 @@ if __name__ == "__main__":
     for t in np.arange(HORIZON):
     	yCoef_t = [ [0] * SUBPERIOD for n in xrange(numScen[t]) ]
     	for n in xrange(numScen[t]):
-        	for k in xrange(SUBPERIOD):
-            	temp = np.multiply(FUEL_PRICE, RATIO) * (1 + FUEL_PRICE_GROWTH) ** t
-            	for i in [1, 2]:
-                	temp[i] = price[t][n]
-            	temp = temp + OPERATING_COST * (1 + OPER_COST_GROWTH) ** t
-            	temp = (prob ** t) * SUBPERIOD_HOUR[k] * temp / (1 + rate) ** t
-            	yCoef_t[n][k] = (list(temp))
+    		for k in xrange(SUBPERIOD):
+    			temp = np.multiply(FUEL_PRICE, RATIO) * (1 + FUEL_PRICE_GROWTH) ** t
+    			for i in [1, 2]:
+    				temp[i] = price[t][n]
+    			temp = temp + OPERATING_COST * (1 + OPER_COST_GROWTH) ** t
+    			temp = (prob ** t) * SUBPERIOD_HOUR[k] * temp / (1 + rate) ** t
+    			yCoef_t[n][k] = list(temp)
     	yCoef.append(yCoef_t)
+    #print yCoef
             
     myFile = open(treeDataDir + "yCoef.dat", "w")
     myFile.write(str(yCoef))
@@ -238,7 +238,7 @@ if __name__ == "__main__":
     	for n in xrange(numScen[t]):
     		temp = [];
     		for k in xrange(SUBPERIOD):
-    			temp += yCoef[t][n][k]
+    			temp = temp + yCoef[t][n][k]
     			temp.append(zCoef[t][k])
     		y2Scenarios[t][n] = temp
 
@@ -462,7 +462,7 @@ if __name__ == "__main__":
     myFile.close()
 
     # uncertain indices for y2 variables
-    uncertainIndexY2 = [1,2,,7,8,13,14]
+    uncertainIndexY2 = [1,2,7,8,13,14]
     myFile = open(dataDir + "uncertainIndexY2.dat", "w")
     myFile.write(str(uncertainIndexY2))
     myFile.close()
