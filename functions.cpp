@@ -260,8 +260,9 @@ void getSamplePaths (IloNumArray3 & samplePaths, IloNumArray3 & coefSamplePaths,
 			// cout << "random number generated: " << U << endl;
 			// cout << int(U/pdf) << ",";
 			// cout << "scenario chosen: " << int(U/pdf) << endl;
-			samplePaths[p].add(fData_p->scenarios[t][int(U/pdf)]);
-			coefSamplePaths[p].add(fData_p->y2Scenarios[t][int(U/pdf)]);
+			int chosen = int(U/pdf);
+			samplePaths[p].add(fData_p->scenarios[t][chosen]);
+			coefSamplePaths[p].add(fData_p->y2Scenarios[t][chosen]);
 
 		} // End of stage for-loop
 		// cout << " " << endl;

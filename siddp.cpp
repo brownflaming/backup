@@ -197,6 +197,7 @@ int main (int argc, char *argv[])
 
 			candidateSol.clear();
 			samplePaths.clear();
+			coefSamplePaths.clear();
 
 			/* Stopping criteria heuristic
 			    After a certain number of iterations, if lower bound starts to stablize,
