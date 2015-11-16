@@ -1,0 +1,63 @@
+Reading data from files...
+All data loaded. Constructing model...
+Decision variables constructed.
+Objective function added to model.
+Constraints added to model.
+Model written in file tree_model.lp.
+Found incumbent of value 3096798.416234 after 0.00 sec. (0.08 ticks)
+Tried aggregator 1 time.
+MIP Presolve eliminated 18 rows and 22 columns.
+MIP Presolve modified 117 coefficients.
+Reduced MIP has 981 rows, 1059 columns, and 4707 nonzeros.
+Reduced MIP has 40 binaries, 200 generals, 0 SOSs, and 0 indicators.
+Presolve time = 0.00 sec. (2.08 ticks)
+Probing fixed 0 vars, tightened 10 bounds.
+Probing time = 0.00 sec. (0.51 ticks)
+Tried aggregator 1 time.
+Reduced MIP has 981 rows, 1059 columns, and 4707 nonzeros.
+Reduced MIP has 40 binaries, 200 generals, 0 SOSs, and 0 indicators.
+Presolve time = 0.00 sec. (2.32 ticks)
+Probing time = 0.00 sec. (0.48 ticks)
+Clique table members: 27.
+MIP emphasis: balance optimality and feasibility.
+MIP search method: dynamic search.
+Parallel mode: deterministic, using up to 4 threads.
+Root relaxation solution time = 0.00 sec. (3.70 ticks)
+
+        Nodes                                         Cuts/
+   Node  Left     Objective  IInf  Best Integer    Best Bound    ItCnt     Gap
+
+*     0+    0                      3096798.4162        0.0000      667  100.00%
+*     0+    0                        14320.2691        0.0000      667  100.00%
+      0     0     1808.3322    38    14320.2691     1808.3322      667   87.37%
+*     0+    0                         4983.6143     1808.3322      667   63.71%
+      0     0     1836.2074    50     4983.6143      Cuts: 68      788   63.16%
+*     0+    0                         4917.5256     1836.2074      788   62.66%
+      0     0     1859.4440    12     4917.5256      Cuts: 82      816   62.19%
+*     0+    0                         2237.1685     1859.4440      816   16.88%
+      0     0     1860.8053    11     2237.1685   MIRcuts: 20      826   16.82%
+      0     0     1863.4190    30     2237.1685   MIRcuts: 32      848   16.71%
+*     0+    0                         2229.3575     1863.4190      848   16.41%
+      0     0     1865.5102    12     2229.3575   MIRcuts: 19      857   16.32%
+*     0+    0                         2064.7537     1865.5102      857    9.65%
+      0     0     1867.9101    32     2064.7537   MIRcuts: 19      878    9.53%
+      0     0     1869.2535    32     2064.7537   MIRcuts: 21      899    9.47%
+      0     0     1870.8628    26     2064.7537   MIRcuts: 21      915    9.39%
+*     0     0      integral     0     1880.2349   MIRcuts: 27      928    0.00%
+      0     0        cutoff           1880.2349                    928    0.00%
+Elapsed time = 0.11 sec. (66.06 ticks, tree = 0.00 MB, solutions = 8)
+
+Mixed integer rounding cuts applied:  137
+Gomory fractional cuts applied:  5
+
+Root node processing (before b&c):
+  Real time             =    0.11 sec. (66.15 ticks)
+Parallel b&c, 4 threads:
+  Real time             =    0.00 sec. (0.00 ticks)
+  Sync time (average)   =    0.00 sec.
+  Wait time (average)   =    0.00 sec.
+                          ------------
+Total (root+branch&cut) =    0.11 sec. (66.15 ticks)
+=============================================
+solution status: Optimal
+Optimal value: 1880.23

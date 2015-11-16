@@ -12,6 +12,7 @@
 #include "functions.h"
 #include "mt64.h"
 
+
 using namespace std;
 
 void readData (formatData * fData_p)
@@ -220,13 +221,14 @@ void buildModel (Model * models, formatData * fData_p)
 		models[t].cplex.setWarning(models[t].env.getNullStream());
 
 		// write model to lp file
-		char fileName[100];
-		sprintf(fileName, "model_%d.lp", t);
-		models[t].cplex.exportModel(fileName);
+		// char fileName[100];
+		// sprintf(fileName, "model_%d.lp", t);
+		// models[t].cplex.exportModel(fileName);
 
 	} // End of t-loop for model construction
 	return;
 } // End of function buildModel
+
 
 void getSamplePaths (IloNumArray3 & samplePaths, IloNumArray3 & coefSamplePaths, formatData * fData_p)
 {

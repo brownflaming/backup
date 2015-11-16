@@ -36,7 +36,7 @@ if __name__ == "__main__":
     sumLength = sum(binLength) + nType
 
     numFWsample = 3
-    scenPerStage = 3
+    scenPerStage = 20
 
     numScen = np.ones(HORIZON - 1, np.int32) * scenPerStage
     numScen = np.insert(numScen, 0, 1)

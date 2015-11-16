@@ -14,30 +14,13 @@
 #include "functions.h"
 #include "mt64.h"
 
+
 ILOSTLBEGIN
 
 int main (int argc, char *argv[])
 {
 	try 
 	{
-      	/*
-      	uniform_real_distribution<double> unif (0.0,1.0);
-      	default_random_engine generator;
-		
-		// initialize random number generator based on the function call
-		if ( argc != 1 && argc != 2 )
-		{
-			usage (argv[0]);
-         	throw (-1);
-      	}
-      	else if ( argc == 1 )
-      	{	
-      		unsigned seed = chrono::system_clock::now().time_since_epoch().count();
-      		default_random_engine generator (seed);
-      	}
-      	else
-      		default_random_engine generator (atoi(argv[1]));
-      	*/
 		if ( argc != 3 && argc != 4 )
 		{
 			usage (argv[0]);
@@ -78,6 +61,9 @@ int main (int argc, char *argv[])
 		// start siddp method
 		// clock_t startTime = clock();
 		chrono::time_point<chrono::system_clock> start, end;
+		chrono::duration<double> elapsed_seconds;
+		double runtime;
+
 		start = chrono::system_clock::now();
 
 		cout << "==================================================" << endl;
@@ -115,6 +101,7 @@ int main (int argc, char *argv[])
 		unordered_set<string> masterSol;
 		unordered_set<string> uniqCandidateSol;
 		unsigned masterSize_old, masterSize_new;
+
 
 		// start the loop until some stopping creterior is hit		
 		do
@@ -205,40 +192,47 @@ int main (int argc, char *argv[])
 				i.e., variance of the last five lower bounds is small enough
 			*/
 			
-			if ( iteration > 6 )
+			if ( iteration > 12 )
 			{
 				vector<float> recentLB;
-				for ( int i = 1; i < 6; ++i )
+				for ( int i = 1; i < 10; ++i )
 					recentLB.push_back(lb[iteration-i]);
 
 				double stdReLB = std_dev(recentLB);
 				if ( stdReLB < TOLOPT )
 				{
-					if ( largeSampleTest )
+					if ( fData.numFWsample == 300 )
 					{
 						cout << "Lower bound has stablized." << endl;
 						break;
 					}
 					else
 					{
-						fData.numFWsample = max(100, int(fData.numFWsample));
-						largeSampleTest = 1;
-					}
-				
+						fData.numFWsample = 300;
+					}				
+				}
+				else
+				{
+					fData.numFWsample = initSampleSize;
 				}
 			}
 			
+			end = chrono::system_clock::now();
+			elapsed_seconds = end - start;
+			runtime = elapsed_seconds.count();
 
 		} while ( iteration < MAXITER );
 
-		// clock_t endTime = clock();
-		// double runtime = double(endTime - startTime)/CLOCKS_PER_SEC;
+		fData.numFWsample = 1500;
+		getSamplePaths(samplePaths, coefSamplePaths, fData_p);	
+		forward(models, fData_p, samplePaths, coefSamplePaths, candidateSol, ub_c, ub_l, ub_r);
+
 		end = chrono::system_clock::now();
-		chrono::duration<double> elapsed_seconds = end - start;
-		double runtime = elapsed_seconds.count();
+		elapsed_seconds = end - start;
+		runtime = elapsed_seconds.count();
 		printf("Total running time %.2f seconds.\n", runtime);
 
-		ofstream output ("result_impvd.txt", ios::out | ios::app);
+		ofstream output ("result.txt", ios::out | ios::app);
 		if ( output.is_open() )
 		{
 			output << "==================================================" << endl;
@@ -253,6 +247,17 @@ int main (int argc, char *argv[])
 			output << "upper bounds improvement: " << ub_c << endl;
 			output << "left 95\% CI for the upper bound: "  << ub_l << endl;
 			output << "right 95\% CI for the upper bound: " << ub_r << endl;
+		}
+
+		ofstream table ("table.txt", ios::out | ios::app);
+		if ( table.is_open() )
+		{
+			table << initSampleSize << ", " << 
+				lb[iteration-1] << ", " <<
+				iteration << ", " <<
+				ub_l[iteration] << ", " <<
+				ub_r[iteration] << ", , , " <<
+				runtime << endl;
 		}
 
 		// free memory

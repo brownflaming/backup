@@ -1,0 +1,51 @@
+Reading data from files...
+All data loaded. Constructing model...
+Decision variables constructed.
+Objective function added to model.
+Constraints added to model.
+Model written in file tree_model.lp.
+Found incumbent of value 1309552.358109 after 0.00 sec. (0.03 ticks)
+Tried aggregator 1 time.
+MIP Presolve eliminated 27 rows and 22 columns.
+MIP Presolve modified 130 coefficients.
+Reduced MIP has 297 rows, 330 columns, and 1197 nonzeros.
+Reduced MIP has 13 binaries, 65 generals, 0 SOSs, and 0 indicators.
+Presolve time = 0.00 sec. (0.59 ticks)
+Probing time = 0.00 sec. (0.05 ticks)
+Tried aggregator 1 time.
+Reduced MIP has 297 rows, 330 columns, and 1197 nonzeros.
+Reduced MIP has 13 binaries, 65 generals, 0 SOSs, and 0 indicators.
+Presolve time = 0.00 sec. (0.64 ticks)
+Probing time = 0.00 sec. (0.05 ticks)
+Clique table members: 9.
+MIP emphasis: balance optimality and feasibility.
+MIP search method: dynamic search.
+Parallel mode: deterministic, using up to 4 threads.
+Root relaxation solution time = 0.00 sec. (0.88 ticks)
+
+        Nodes                                         Cuts/
+   Node  Left     Objective  IInf  Best Integer    Best Bound    ItCnt     Gap
+
+*     0+    0                      1309552.3581        0.0000      211  100.00%
+*     0+    0                         2559.0621        0.0000      211  100.00%
+      0     0      838.3548    12     2559.0621      838.3548      211   67.24%
+*     0+    0                          952.0656      838.3548      211   11.94%
+      0     0      880.4951    18      952.0656      Cuts: 25      241    7.52%
+      0     0      947.4093     6      952.0656      Cuts: 33      260    0.49%
+      0     0        cutoff            952.0656                    260    0.00%
+Elapsed time = 0.03 sec. (11.46 ticks, tree = 0.00 MB, solutions = 3)
+
+Mixed integer rounding cuts applied:  28
+Gomory fractional cuts applied:  4
+
+Root node processing (before b&c):
+  Real time             =    0.03 sec. (11.48 ticks)
+Parallel b&c, 4 threads:
+  Real time             =    0.00 sec. (0.00 ticks)
+  Sync time (average)   =    0.00 sec.
+  Wait time (average)   =    0.00 sec.
+                          ------------
+Total (root+branch&cut) =    0.03 sec. (11.48 ticks)
+=============================================
+solution status: Optimal
+Optimal value: 952.066
