@@ -1,0 +1,5 @@
+Time horizon: 5; Benders' cut: 1; Improved Benders' cut: 1
+2, 2246.36, 46, 2227.16, 2274.31, , , 897.39
+Time horizon: 6; Benders' cut: 1; Improved Benders' cut: 1
+2, 2818.92, 78, 2781.45, 2839.69, , , 3060.75
+

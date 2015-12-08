@@ -559,6 +559,7 @@ void backward (Model * models, formatData * fData_p, const IloNumArray3 candidat
 								expr.end();
 								newObj.end();
 								modelLGR.end();
+								cplexLGR.end();
 							}
 						}
 						else // not optimal
@@ -575,9 +576,6 @@ void backward (Model * models, formatData * fData_p, const IloNumArray3 candidat
 			
 				}
 			} // End of loop over all scenarios in stage t
-
-			// cout << "MIP objective: " << scenMIPobj << "  MIP Average: " << IloSum(scenMIPobj) / fData_p->numScen[t] << endl;
-			// cout << "LP objective: "  << scenLPobj  << "  LP Average: "  << IloSum(scenLPobj) / fData_p->numScen[t] << endl;
 
 			// construct and add integer L-shaped cut
 			if ( integerFlag )
@@ -703,10 +701,12 @@ double std_dev ( vector<float> & v )
 
 void usage (char *progname)
 {
-	cerr << "Usage:  " << progname << " arg1 [arg2]" << endl;
-	cerr << "At least one parameter must be specified." << endl;
+	cerr << "Usage:  " << progname << " arg1 arg2 [arg3]" << endl;
+	cerr << "At least two parameters must be specified." << endl;
 	cerr << "arg1: 0 -- turn off Benders' cuts;" << endl;
 	cerr << "      1 -- turn on Benders' cuts." << endl;
-	cerr << "arg2: [optional] used as the seed of the random number generator." << endl;
+	cerr << "arg2: 0 -- turn off Improved Benders' cuts;" << endl;
+	cerr << "      1 -- turn on Improved Benders' cuts." << endl;
+	cerr << "arg3: [optional] used as the seed of the random number generator." << endl;
 	cerr << "      If not provided, system will generate one automatically." << endl;
 } // END usage

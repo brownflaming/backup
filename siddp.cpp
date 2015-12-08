@@ -28,7 +28,7 @@ int main (int argc, char *argv[])
 		}
 
 		const bool bendersFlag = atoi(argv[1]);
-		const bool impvdBendersFlag = atoi(argv[2]);
+		bool impvdBendersFlag = atoi(argv[2]);
 		bool integerFlag = 1;
 		if ( bendersFlag + impvdBendersFlag )
 			integerFlag = 0;
@@ -62,14 +62,13 @@ int main (int argc, char *argv[])
 		// clock_t startTime = clock();
 		chrono::time_point<chrono::system_clock> start, end;
 		chrono::duration<double> elapsed_seconds;
-		double runtime;
-
-		start = chrono::system_clock::now();
+		double runtime, runtime_fw, runtime_bw;
 
 		cout << "==================================================" << endl;
+		start = chrono::system_clock::now();
+
 		cout << "Starting SDDP procedure ... " << endl;
 		IloInt initSampleSize = fData.numFWsample;
-		bool largeSampleTest = 0;  // used in stopping heuristic
 		IloNumArray lb(fData.dataEnv); // double array to record lowerbound
 		IloNumArray ub_c(fData.dataEnv); // double array to record ub center
 		IloNumArray ub_l(fData.dataEnv); // double array to record ub lower interval
@@ -81,27 +80,12 @@ int main (int argc, char *argv[])
 		IloNumArray3 samplePaths(fData.dataEnv);
 		// create an array to store the sampled paths (coeff) in the forward pass
 		IloNumArray3 coefSamplePaths(fData.dataEnv);
-
 		// create an array to store the candidate solutions corrsp. to the sampled paths
 		IloNumArray3 candidateSol(fData.dataEnv);
-		
-		/*
-		IloNumArray3 candidateSol(fData.dataEnv, fData.numFWsample);
-		
-		for ( int p = 0; p < fData.numFWsample; ++p )
-		{
-			candidateSol[p] = IloNumArray2(fData.dataEnv, fData.numStage);
-			for ( int t = 0; t < fData.numStage; ++t )
-			{
-				candidateSol[p][t] = IloNumArray(fData.dataEnv);
-			}
-		}
-		*/
 
 		unordered_set<string> masterSol;
 		unordered_set<string> uniqCandidateSol;
 		unsigned masterSize_old, masterSize_new;
-
 
 		// start the loop until some stopping creterior is hit		
 		do
@@ -141,10 +125,13 @@ int main (int argc, char *argv[])
 
 			if ( (! integerFlag) && (iteration > 2) )
 			{
-				if ( lb[iteration-2]-lb[iteration-3] < EPSILON )
+				if ( lb[iteration-2]-lb[iteration-3] < 0.05 )
+				{
 					integerFlag = 1;
+					impvdBendersFlag = 0;
+				}
 			}
-
+			
 			cout << "L-shaped cuts: " << integerFlag << endl;
 
 			backward(models, fData_p, candidateSol, lb, masterSol, bendersFlag, impvdBendersFlag, integerFlag);
@@ -162,26 +149,9 @@ int main (int argc, char *argv[])
 			{
 				uniqCandidateSol.insert(toString(candidateSol[p]));
 			}
-			/*
-			cout << "candidate solution: " << endl;
-			for ( auto it = uniqCandidateSol.begin(); it != uniqCandidateSol.end(); ++it )
-			{
-				cout << *it << endl;
-			}
-			*/
 
 			// if master problem produce a solution encountered before, increase sample size.
 			masterSize_new = masterSol.size();
-			/*
-			if ( integerFlag && (masterSize_new == masterSize_old) && (fData.numFWsample < 100*fData.numStage) )
-			{
-				cout << "forward sample size increased by " << initSampleSize << endl;
-				fData.numFWsample += initSampleSize;
-			}
-			*/
-
-			//cout << "candidateSol" << endl;
-			//cout << candidateSol << endl;
 
 			candidateSol.clear();
 			samplePaths.clear();
@@ -232,7 +202,7 @@ int main (int argc, char *argv[])
 		runtime = elapsed_seconds.count();
 		printf("Total running time %.2f seconds.\n", runtime);
 
-		ofstream output ("result.txt", ios::out | ios::app);
+		ofstream output ("1208result.txt", ios::out | ios::app);
 		if ( output.is_open() )
 		{
 			output << "==================================================" << endl;
@@ -249,7 +219,7 @@ int main (int argc, char *argv[])
 			output << "right 95\% CI for the upper bound: " << ub_r << endl;
 		}
 
-		ofstream table ("table.txt", ios::out | ios::app);
+		ofstream table ("1208table.txt", ios::out | ios::app);
 		if ( table.is_open() )
 		{
 			table << initSampleSize << ", " << 
