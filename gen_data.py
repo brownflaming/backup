@@ -5,7 +5,7 @@ import os
 
 if __name__ == "__main__":
 
-    HORIZON = 10
+    HORIZON = 5
     GENERATOR_LIST = {0: 'BaseLoad', 1: 'CC', 2: 'CT', 3: 'Nuclear', 4: 'Wind', 5: 'IGCC'}
     MAX_OUTPUT = np.array([1130.0, 390.0, 380.0, 1180.0, 175.0, 560.0])
     MAX_UNIT = np.array([4, 10, 10, 1, 45, 4], np.int32)
@@ -35,8 +35,8 @@ if __name__ == "__main__":
     binLength = np.floor(np.log2(MAX_UNIT)).astype(int)
     sumLength = sum(binLength) + nType
 
-    numFWsample = 3
-    scenPerStage = 20
+    numFWsample = 2
+    scenPerStage = 100
 
     numScen = np.ones(HORIZON - 1, np.int32) * scenPerStage
     numScen = np.insert(numScen, 0, 1)
@@ -69,7 +69,7 @@ if __name__ == "__main__":
 		
     ''' Parameters used by tree model '''
 
-    treeDataDir = "tree_model/data_" + str(HORIZON) + "/"
+    treeDataDir = "test_tree_model/data_" + str(HORIZON) + "/"
     if not os.path.exists(treeDataDir):
         os.makedirs(treeDataDir)
 
@@ -186,7 +186,7 @@ if __name__ == "__main__":
 
     ''' Parameters used by SDDP '''
 
-    dataDir = "bin/data_" + str(HORIZON) + "/"
+    dataDir = "bin/test_data/" + str(HORIZON) + "_" + str(scenPerStage) + "/"
     if not os.path.exists(dataDir):
         os.makedirs(dataDir)
 

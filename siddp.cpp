@@ -128,7 +128,7 @@ int main (int argc, char *argv[])
 				if ( lb[iteration-2]-lb[iteration-3] < 0.05 )
 				{
 					integerFlag = 1;
-					impvdBendersFlag = 0;
+					//impvdBendersFlag = 0;
 				}
 			}
 			
@@ -222,11 +222,13 @@ int main (int argc, char *argv[])
 		ofstream table ("1208table.txt", ios::out | ios::app);
 		if ( table.is_open() )
 		{
-			table << initSampleSize << ", " << 
+			table << fData.numStage << ", " <<
+				fData.numScen[1] << ", " <<
+				initSampleSize << ", " << 
 				lb[iteration-1] << ", " <<
 				iteration << ", " <<
 				ub_l[iteration] << ", " <<
-				ub_r[iteration] << ", , , " <<
+				ub_r[iteration] << ", , " <<
 				runtime << endl;
 		}
 

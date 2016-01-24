@@ -598,6 +598,14 @@ void backward (Model * models, formatData * fData_p, const IloNumArray3 candidat
 				expr.end();
 			}
 
+			//if ( impvdBendersFlag )
+			//{
+			//	IloExpr expr(models[t-1].env);
+			//	expr = models[t-1].theta;
+			//	IloNum
+			//
+			//}
+
 			// construct and add Benders cut
 			if ( bendersFlag + impvdBendersFlag )
 			{
