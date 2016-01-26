@@ -383,7 +383,10 @@ void forward (Model * models, formatData * fData_p, const IloNumArray3 samplePat
 
 void backward (Model * models, formatData * fData_p, const IloNumArray3 candidateSol,
 		IloNumArray & lb, unordered_set<string> & masterSol,
-		const bool bendersFlag, const bool impvdBendersFlag, const bool integerFlag)
+		const bool bendersFlag,
+		const bool impvdBendersFlag,
+		const bool integerFlag,
+		const bool lagrangianFlag)
 {
 	cout << "================================" << endl;
 	cout << "Start the backward process..." << endl;
@@ -420,10 +423,12 @@ void backward (Model * models, formatData * fData_p, const IloNumArray3 candidat
 			// create arrays to store MIP, Lagrangian with optimal LP dual, and LP optimal values
 			IloNumArray scenMIPobj(fData_p->dataEnv);
 			IloNumArray scenLGRobj(fData_p->dataEnv);
+			IloNumArray scenLGRobj_update(fData_p->dataEnv);
 			IloNumArray scenLPobj(fData_p->dataEnv);
-			IloNumArray vals(fData_p->dataEnv, constr2Size);
+			IloNumArray multiplier(fData_p->dataEnv, constr2Size);
 			// IloNumArray dualAvg(fData_p->dataEnv, constr2Size);
 			vector<float> dualAvg ( (*it).size(), 0.0);
+			vector<float> multiplierAvg ( (*it).size(), 0.0);
 
 			for ( k = 0; k < fData_p->numScen[t]; ++k )  // for each scenario at stage t
 			{
@@ -472,7 +477,7 @@ void backward (Model * models, formatData * fData_p, const IloNumArray3 candidat
 					}
 				}
 
-				if ( bendersFlag + impvdBendersFlag )
+				if ( bendersFlag + impvdBendersFlag + lagrangianFlag )
 				{
 					// solve models[t] LP relaxation
 					IloConversion relaxVarX(models[t].env, models[t].x, ILOFLOAT);
@@ -494,16 +499,16 @@ void backward (Model * models, formatData * fData_p, const IloNumArray3 candidat
 							// record objective function value
 							scenLPobj.add(models[t].cplex.getObjValue());
 							// record optimal dual multipliers
-							models[t].cplex.getDuals(vals, models[t].constr2);
-							for (i = 0; i < vals.getSize(); ++i)
-								dualAvg[i] += vals[i] / fData_p->numScen[t];
+							models[t].cplex.getDuals(multiplier, models[t].constr2);
+							for (i = 0; i < multiplier.getSize(); ++i)
+								dualAvg[i] += multiplier[i] / fData_p->numScen[t];
 							
 							// change model back to MIP
 							relaxVarX.end();
 							relaxVarY.end();
 
 							// continue to solve Lagrangian if impvdBendersFlag is 1
-							if ( impvdBendersFlag )
+							if ( impvdBendersFlag + lagrangianFlag )
 							{
 								// create a new model with models[t].env
 								IloModel modelLGR(models[t].env);
@@ -518,31 +523,28 @@ void backward (Model * models, formatData * fData_p, const IloNumArray3 candidat
 								modelLGR.add(models[t].cuts);
 
 								// create new objective function with additional term \pi_LP' z
-								IloObjective newObj = IloMinimize(models[t].env);
+								IloObjective objLGR = IloMinimize(models[t].env);
 								IloExpr expr(models[t].env);
 								expr += IloScalProd(fData_p->xCoef[t], models[t].x);
 								expr += IloScalProd(fData_p->y1Coef[t], models[t].y1);
 								expr += IloScalProd(fData_p->y2Scenarios[t][k], models[t].y2);
 								expr += models[t].theta;
-								expr -= IloScalProd(vals, models[t].z);
-								newObj.setExpr(expr);
-								modelLGR.add(newObj);
+								expr -= IloScalProd(multiplier, models[t].z);
+								objLGR.setExpr(expr);
+								modelLGR.add(objLGR);
 
 								// create cplex algorithm for this model
 								IloCplex cplexLGR(modelLGR);
-								char fileName[100];
-								sprintf(fileName, "LGmodel_%d.lp", t);
+								// char fileName[100];
+								// sprintf(fileName, "LGmodel_%d.lp", t);
 								// cplexLGR.exportModel(fileName);
 								cplexLGR.setOut(models[t].env.getNullStream());
 
-								// solve new model
-								if ( cplexLGR.solve() )
+								// solve IP to get improved Benders' cut
+								if ( impvdBendersFlag )
 								{
-									double consObj = 0;
-									for ( i = 0; i < vals.getSize(); ++i )
-										consObj += vals[i] * (*it)[i];
-								//	cout << consObj << endl;
-									scenLGRobj.add(cplexLGR.getObjValue() + consObj);
+									if ( cplexLGR.solve() )
+										scenLGRobj.add(cplexLGR.getObjValue());
 								}
 								// cout << "vals: " << vals << endl;
 								// cout << "LP relaxation optimal value: " << scenLPobj << endl;
@@ -554,10 +556,25 @@ void backward (Model * models, formatData * fData_p, const IloNumArray3 candidat
 								//system("read");
 								//cout << modelLGR << endl;
 								//system("read");
+								//
+								
+								// update lagrangian multipliers for a few iterations
+								if ( lagrangianFlag )
+								{
+									LGupdate(modelLGR, cplexLGR, objLGR,
+											multiplier, scenLGRobj_update,
+											models[t], *it);
+									for (i = 0; i < multiplier.getSize(); ++i)
+										multiplierAvg[i] += multiplier[i] / fData_p->numScen[t];
+								}
+								cout << "LG update finished" << endl;
+								cout << "IP solution " << scenMIPobj << endl;
+								cout << "LGR solution " << scenLGRobj_update << endl;
+								cout << "========================" << endl;
 
 								// release memory
 								expr.end();
-								newObj.end();
+								objLGR.end();
 								modelLGR.end();
 								cplexLGR.end();
 							}
@@ -616,17 +633,38 @@ void backward (Model * models, formatData * fData_p, const IloNumArray3 candidat
 					expr -= dualAvg[i] * models[t-1].x[i];
 				}
 				if ( impvdBendersFlag )
-					rhs = IloSum(scenLGRobj) / fData_p->numScen[t] - inner_product(dualAvg.begin(), dualAvg.end(), (*it).begin(), 0);
+					rhs = IloSum(scenLGRobj) / fData_p->numScen[t];
 				else
 					rhs = IloSum(scenLPobj) / fData_p->numScen[t] - inner_product(dualAvg.begin(), dualAvg.end(), (*it).begin(), 0);
 				models[t-1].cuts.add(expr >= rhs);
 				models[t-1].mod.add(expr >= rhs);
 				if ( impvdBendersFlag )
+				{
 					cout << "Improved Benders' cut added." << endl;
+					cout << expr << " >= " << rhs << endl;
+				}
 				else
 					cout << "Benders' cut added." << endl;
 				expr.end();
 			}
+
+			if ( lagrangianFlag )
+			{
+				IloExpr expr(models[t-1].env);
+				expr = models[t-1].theta;
+				for ( i = 0; i < models[t-1].x.getSize(); ++i )
+					expr -= multiplierAvg[i] * models[t-1].x[i];
+				rhs = IloSum(scenLGRobj_update) / fData_p->numScen[t];
+				models[t-1].cuts.add(expr >= rhs);
+				models[t-1].mod.add(expr >= rhs);
+				cout << "Lagrangian cut added." << endl;
+				cout << expr << ">=" << rhs << endl;
+				expr.end();
+			}
+
+			cout << "candidate solution: " << endl;
+			for ( i = 0; i < (*it).size(); ++i )
+				cout << (*it)[i] << " ";
 
 			// free momery
 			scenMIPobj.end();
@@ -634,8 +672,10 @@ void backward (Model * models, formatData * fData_p, const IloNumArray3 candidat
 			{
 				scenLPobj.end();
 				scenLGRobj.end();
-				vals.end();
+				scenLGRobj_update.end();
+				multiplier.end();
 				dualAvg.clear();
+				multiplierAvg.clear();
 			}
 
 		} // End of loop over unique solutions
@@ -683,6 +723,58 @@ void backward (Model * models, formatData * fData_p, const IloNumArray3 candidat
 } // End of backward pass to refine value functions
 
 
+void LGupdate ( IloModel & modelLGR, IloCplex & cplexLGR, IloObjective & objLGR,  
+		IloNumArray & multiplier, IloNumArray & scenObj,
+		const Model model, const vector<int> state )
+{
+	IloNumArray gradient(multiplier.getEnv(), multiplier.getSize());
+	int i, j;
+	int numIter = 10;
+	double norm_grad, stepSize, objVal;
+
+	for ( i = 0; i < numIter; ++i)
+	{
+		cplexLGR.solve();
+		// cout << "Solution status: " << cplexLGR.getStatus() << endl;
+		cout << cplexLGR.getObjValue() << endl;
+		objVal = cplexLGR.getObjValue();
+		
+		norm_grad = 0.0;
+		stepSize = 0.05 / sqrt(i+1);
+		
+		// obtain and revise gradient
+		cplexLGR.getValues(gradient, model.z);
+		// cout << "current solution:" << gradient << endl;
+		// cout << "current objective function: " << objLGR << endl;
+		for ( j = 0; j < gradient.getSize(); ++j)
+		{
+			gradient[j] -= state[j];
+			norm_grad += pow(abs(gradient[j]),2);
+		}
+		cout << "norm of the current gradient: " << norm_grad << endl;
+		cout << "gradient: " << gradient << endl;
+
+		// optimality check
+		if ( norm_grad < 1e-5 )
+			break;
+		else
+		{
+			// update multiplier and objective function
+			for ( j = 0; j < multiplier.getSize(); ++j )
+			{
+				multiplier[j] -= stepSize / (norm_grad + 1e-3) * gradient[j];
+				objLGR.setLinearCoef(model.z[j], -multiplier[j]);
+			}
+		}
+	}
+	if ( norm_grad >= 1e-5 )
+	{	
+		cplexLGR.solve();
+		objVal = cplexLGR.getObjValue();
+	}
+	scenObj.add(objVal);
+}
+
 double avg ( vector<float> & v )
 {
     double sumV = 0.0;
@@ -709,12 +801,14 @@ double std_dev ( vector<float> & v )
 
 void usage (char *progname)
 {
-	cerr << "Usage:  " << progname << " arg1 arg2 [arg3]" << endl;
+	cerr << "Usage:  " << progname << " arg1 arg2 arg3 [arg4]" << endl;
 	cerr << "At least two parameters must be specified." << endl;
 	cerr << "arg1: 0 -- turn off Benders' cuts;" << endl;
 	cerr << "      1 -- turn on Benders' cuts." << endl;
 	cerr << "arg2: 0 -- turn off Improved Benders' cuts;" << endl;
 	cerr << "      1 -- turn on Improved Benders' cuts." << endl;
-	cerr << "arg3: [optional] used as the seed of the random number generator." << endl;
+	cerr << "arg3: 0 -- turn off Lagragian cuts;" << endl;
+	cerr << "      1 -- turn on Lagragian cuts." << endl;
+	cerr << "arg4: [optional] used as the seed of the random number generator." << endl;
 	cerr << "      If not provided, system will generate one automatically." << endl;
 } // END usage

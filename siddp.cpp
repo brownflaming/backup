@@ -21,7 +21,7 @@ int main (int argc, char *argv[])
 {
 	try 
 	{
-		if ( argc != 3 && argc != 4 )
+		if ( argc != 4 && argc != 5 )
 		{
 			usage (argv[0]);
 			throw (-1);
@@ -29,13 +29,14 @@ int main (int argc, char *argv[])
 
 		const bool bendersFlag = atoi(argv[1]);
 		bool impvdBendersFlag = atoi(argv[2]);
+		bool lagrangianFlag = atoi(argv[3]);
 		bool integerFlag = 1;
-		if ( bendersFlag + impvdBendersFlag )
-			integerFlag = 0;
+		// if ( bendersFlag + impvdBendersFlag )
+		// 	integerFlag = 0;
 
 		unsigned long long seed;
-		if ( argc == 4 )
-			seed = atoi(argv[3]);
+		if ( argc == 5 )
+			seed = atoi(argv[4]);
 		else
 			seed = chrono::system_clock::now().time_since_epoch().count();
 		init_genrand64(seed);
@@ -134,7 +135,7 @@ int main (int argc, char *argv[])
 			
 			cout << "L-shaped cuts: " << integerFlag << endl;
 
-			backward(models, fData_p, candidateSol, lb, masterSol, bendersFlag, impvdBendersFlag, integerFlag);
+			backward(models, fData_p, candidateSol, lb, masterSol, bendersFlag, impvdBendersFlag, integerFlag, lagrangianFlag);
 
 			cout << "Backward pass completed." << endl;
 			cout << "================================" << endl;
