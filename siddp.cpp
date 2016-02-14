@@ -21,7 +21,7 @@ int main (int argc, char *argv[])
 {
 	try 
 	{
-		if ( argc != 4 && argc != 5 )
+		if ( argc != 5 && argc != 6 )
 		{
 			usage (argv[0]);
 			throw (-1);
@@ -30,13 +30,13 @@ int main (int argc, char *argv[])
 		const bool bendersFlag = atoi(argv[1]);
 		bool impvdBendersFlag = atoi(argv[2]);
 		bool lagrangianFlag = atoi(argv[3]);
-		bool integerFlag = 1;
-		// if ( bendersFlag + impvdBendersFlag )
+		bool integerFlag = atoi(argv[4]);
+		//if ( impvdBendersFlag + lagrangianFlag )
 		// 	integerFlag = 0;
 
 		unsigned long long seed;
-		if ( argc == 5 )
-			seed = atoi(argv[4]);
+		if ( argc == 6 )
+			seed = atoi(argv[5]);
 		else
 			seed = chrono::system_clock::now().time_since_epoch().count();
 		init_genrand64(seed);
@@ -115,23 +115,17 @@ int main (int argc, char *argv[])
 			}
 
 			masterSize_old = masterSol.size();
+			
 			/*
-			cout << "number of unique master solutions: " << masterSize_old << endl;
-			cout << "the solutions are: " << endl;
-			for ( auto it = masterSol.begin(); it != masterSol.end(); ++it )
-			{
-				cout << *it << endl;
-			}
-			*/
-
-			if ( (! integerFlag) && (iteration > 2) )
+			if ( (! integerFlag) && (! lagrangianFlag) && (iteration > 2) )
 			{
 				if ( lb[iteration-2]-lb[iteration-3] < 0.05 )
 				{
 					integerFlag = 1;
-					//impvdBendersFlag = 0;
+					impvdBendersFlag = 0;
 				}
 			}
+			*/
 			
 			cout << "L-shaped cuts: " << integerFlag << endl;
 
@@ -192,7 +186,7 @@ int main (int argc, char *argv[])
 			elapsed_seconds = end - start;
 			runtime = elapsed_seconds.count();
 
-		} while ( iteration < MAXITER );
+		} while ( (iteration < MAXITER) && (runtime < 18000) );
 
 		fData.numFWsample = 1500;
 		getSamplePaths(samplePaths, coefSamplePaths, fData_p);	
@@ -203,7 +197,7 @@ int main (int argc, char *argv[])
 		runtime = elapsed_seconds.count();
 		printf("Total running time %.2f seconds.\n", runtime);
 
-		ofstream output ("1208result.txt", ios::out | ios::app);
+		ofstream output ("0208_result.txt", ios::out | ios::app);
 		if ( output.is_open() )
 		{
 			output << "==================================================" << endl;
@@ -211,6 +205,8 @@ int main (int argc, char *argv[])
 			output << "time horizon: " << fData.numStage << endl;
 			output << "Benders cut: " << bendersFlag << endl;
 			output << "Improved Benders cut: " << impvdBendersFlag << endl;
+			output << "Lagrangian cut: " << lagrangianFlag << endl;
+			output << "Integer Optimality cut: " << integerFlag << endl;
 			output << "FW sample paths: " << initSampleSize << endl;
 			output << "total iterations: " << iteration << endl;
 			output << "total time elapsed: " << runtime << " seconds." << endl;
@@ -220,16 +216,16 @@ int main (int argc, char *argv[])
 			output << "right 95\% CI for the upper bound: " << ub_r << endl;
 		}
 
-		ofstream table ("1208table.txt", ios::out | ios::app);
+		ofstream table ("0208_table.txt", ios::out | ios::app);
 		if ( table.is_open() )
 		{
-			table << fData.numStage << ", " <<
-				fData.numScen[1] << ", " <<
-				initSampleSize << ", " << 
+			table << initSampleSize << ", " << 
 				lb[iteration-1] << ", " <<
 				iteration << ", " <<
 				ub_l[iteration] << ", " <<
-				ub_r[iteration] << ", , " <<
+				ub_r[iteration] << ", " <<
+				(ub_r[iteration] - lb[iteration-1])/ub_r[iteration] << ", " <<
+				runtime / iteration << ", " <<
 				runtime << endl;
 		}
 

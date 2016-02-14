@@ -13,15 +13,6 @@ const double ZALPHA = 1.96;
 /*Define a small number for numerical convenience*/
 const double EPSILON = 1e-4;
 
-
-/*Set the accuracy level for the continuous variable approximation*/
-//const double precision = 0.1;
-
-/* Improved optimality cut : 
- * 0 : simple cut
- * 1 : improved cut*/
-//const int impFlag = 0;
-
 // Define 3-d array
 typedef IloArray<IloNumArray2> IloNumArray3;
 typedef std::vector< std::vector<int> > IntMatrix;

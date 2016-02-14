@@ -48,7 +48,7 @@ void backward (Model * models, formatData * fData_p, const IloNumArray3 candidat
 
 void LGupdate( IloModel & modelLGR, IloCplex & cplexLGR, IloObjective & objLGR,
 		IloNumArray & multiplier, IloNumArray & scenObj,
-		const Model model, const std::vector<int> state );
+		const Model model, const std::vector<int> state, const double ub);
 	
 double avg ( std::vector<float> & v );
 

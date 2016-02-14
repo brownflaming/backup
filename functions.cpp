@@ -451,31 +451,32 @@ void backward (Model * models, formatData * fData_p, const IloNumArray3 candidat
 				// cout << "Problem is MIP? " << models[t].cplex.isMIP() << endl;
 				// models[t].cplex.exportModel("mip.lp");
 
-				if ( integerFlag )
-				{
-					if ( models[t].cplex.solve() ) // feasible
-					{	
-						// get solution status
-						// cout << "solution status: optimal" << endl;
-						solStatus = models[t].cplex.getStatus();
+				// if ( integerFlag )
+				// {
+				// solve node IP, can be used in integer cut or serve as an ub for LGR
+				if ( models[t].cplex.solve() ) // feasible
+				{	
+					// get solution status
+					// cout << "solution status: optimal" << endl;
+					solStatus = models[t].cplex.getStatus();
 
-						if ( solStatus == IloAlgorithm::Optimal )
-						{
-							// record objective function value
-							scenMIPobj.add(models[t].cplex.getObjValue());
-						}
-						else // not optimal
-						{
-							cout << "Solution status: " << solStatus << endl;
-							throw ("MIP not optimal...");
-						}
-					}
-					else // infeasible
+					if ( solStatus == IloAlgorithm::Optimal )
 					{
-						cout << "Solution status: " << models[t].cplex.getStatus() << endl;
-						throw ("MIP has no solution...");
+						// record objective function value
+						scenMIPobj.add(models[t].cplex.getObjValue());
+					}
+					else // not optimal
+					{
+						cout << "Solution status: " << solStatus << endl;
+						throw ("MIP not optimal...");
 					}
 				}
+				else // infeasible
+				{
+					cout << "Solution status: " << models[t].cplex.getStatus() << endl;
+					throw ("MIP has no solution...");
+				}
+				// }
 
 				if ( bendersFlag + impvdBendersFlag + lagrangianFlag )
 				{
@@ -507,7 +508,7 @@ void backward (Model * models, formatData * fData_p, const IloNumArray3 candidat
 							relaxVarX.end();
 							relaxVarY.end();
 
-							// continue to solve Lagrangian if impvdBendersFlag is 1
+							// continue to solve Lagrangian if needed
 							if ( impvdBendersFlag + lagrangianFlag )
 							{
 								// create a new model with models[t].env
@@ -522,7 +523,7 @@ void backward (Model * models, formatData * fData_p, const IloNumArray3 candidat
 								modelLGR.add(models[t].constr1);
 								modelLGR.add(models[t].cuts);
 
-								// create new objective function with additional term \pi_LP' z
+								// create new objective function with additional term -\pi_LP' z
 								IloObjective objLGR = IloMinimize(models[t].env);
 								IloExpr expr(models[t].env);
 								expr += IloScalProd(fData_p->xCoef[t], models[t].x);
@@ -546,31 +547,20 @@ void backward (Model * models, formatData * fData_p, const IloNumArray3 candidat
 									if ( cplexLGR.solve() )
 										scenLGRobj.add(cplexLGR.getObjValue());
 								}
-								// cout << "vals: " << vals << endl;
-								// cout << "LP relaxation optimal value: " << scenLPobj << endl;
-								// cout << "LG relaxation optimal value: " << scenLGRobj << endl;
-
-								//system("read");
-
-								//cout << models[t].mod << endl;;
-								//system("read");
-								//cout << modelLGR << endl;
-								//system("read");
-								//
 								
 								// update lagrangian multipliers for a few iterations
 								if ( lagrangianFlag )
 								{
 									LGupdate(modelLGR, cplexLGR, objLGR,
 											multiplier, scenLGRobj_update,
-											models[t], *it);
+											models[t], *it, scenMIPobj[k]);
 									for (i = 0; i < multiplier.getSize(); ++i)
 										multiplierAvg[i] += multiplier[i] / fData_p->numScen[t];
+									cout << "LG update finished" << endl;
+									// cout << "IP solution " << scenMIPobj << endl;
+									// cout << "LGR solution " << scenLGRobj_update << endl;
+									cout << "========================" << endl;
 								}
-								cout << "LG update finished" << endl;
-								cout << "IP solution " << scenMIPobj << endl;
-								cout << "LGR solution " << scenLGRobj_update << endl;
-								cout << "========================" << endl;
 
 								// release memory
 								expr.end();
@@ -615,23 +605,13 @@ void backward (Model * models, formatData * fData_p, const IloNumArray3 candidat
 				expr.end();
 			}
 
-			//if ( impvdBendersFlag )
-			//{
-			//	IloExpr expr(models[t-1].env);
-			//	expr = models[t-1].theta;
-			//	IloNum
-			//
-			//}
-
-			// construct and add Benders cut
+			// construct and add different types of cuts
 			if ( bendersFlag + impvdBendersFlag )
 			{
 				IloExpr expr(models[t-1].env);
 				expr = models[t-1].theta;
 				for ( i = 0; i < models[t-1].x.getSize(); ++i )
-				{
 					expr -= dualAvg[i] * models[t-1].x[i];
-				}
 				if ( impvdBendersFlag )
 					rhs = IloSum(scenLGRobj) / fData_p->numScen[t];
 				else
@@ -639,10 +619,7 @@ void backward (Model * models, formatData * fData_p, const IloNumArray3 candidat
 				models[t-1].cuts.add(expr >= rhs);
 				models[t-1].mod.add(expr >= rhs);
 				if ( impvdBendersFlag )
-				{
 					cout << "Improved Benders' cut added." << endl;
-					cout << expr << " >= " << rhs << endl;
-				}
 				else
 					cout << "Benders' cut added." << endl;
 				expr.end();
@@ -658,17 +635,12 @@ void backward (Model * models, formatData * fData_p, const IloNumArray3 candidat
 				models[t-1].cuts.add(expr >= rhs);
 				models[t-1].mod.add(expr >= rhs);
 				cout << "Lagrangian cut added." << endl;
-				cout << expr << ">=" << rhs << endl;
 				expr.end();
 			}
 
-			cout << "candidate solution: " << endl;
-			for ( i = 0; i < (*it).size(); ++i )
-				cout << (*it)[i] << " ";
-
 			// free momery
 			scenMIPobj.end();
-			if ( bendersFlag + impvdBendersFlag )
+			if ( bendersFlag + impvdBendersFlag + lagrangianFlag )
 			{
 				scenLPobj.end();
 				scenLGRobj.end();
@@ -678,7 +650,7 @@ void backward (Model * models, formatData * fData_p, const IloNumArray3 candidat
 				multiplierAvg.clear();
 			}
 
-		} // End of loop over unique solutions
+		} // End of loop over unique candidate solutions
 
 		uniqueSet.clear();
 		uniqueSol.clear();
@@ -687,7 +659,6 @@ void backward (Model * models, formatData * fData_p, const IloNumArray3 candidat
 
 	cout << "================================" << endl;
 	cout << "Solving the master problem: " << endl;
-	//cout << models[0].mod << endl;
 
 	// solve models[0] as a MIP
 	if ( models[0].cplex.solve() ) // feasible
@@ -702,7 +673,6 @@ void backward (Model * models, formatData * fData_p, const IloNumArray3 candidat
 			lb.add(models[0].cplex.getObjValue());
 			IloNumArray vals(fData_p->dataEnv, models[0].x.getSize());
 			models[0].cplex.getValues(vals, models[0].x);
-			// cout << "solution value obtained." << endl;
 			for ( i = 0; i < vals.getSize(); ++i )
 				vals[i] = round(vals[i]);
 			masterSol.insert(toString(vals));
@@ -725,40 +695,43 @@ void backward (Model * models, formatData * fData_p, const IloNumArray3 candidat
 
 void LGupdate ( IloModel & modelLGR, IloCplex & cplexLGR, IloObjective & objLGR,  
 		IloNumArray & multiplier, IloNumArray & scenObj,
-		const Model model, const vector<int> state )
+		const Model model, const vector<int> state, const double ub )
 {
 	IloNumArray gradient(multiplier.getEnv(), multiplier.getSize());
 	int i, j;
-	int numIter = 10;
-	double norm_grad, stepSize, objVal;
+	int numIter = 5*1e3;
+	double norm_grad, stepSize, objVal, gap;
+	bool optimalFlag = 0;
 
 	for ( i = 0; i < numIter; ++i)
 	{
 		cplexLGR.solve();
-		// cout << "Solution status: " << cplexLGR.getStatus() << endl;
-		cout << cplexLGR.getObjValue() << endl;
 		objVal = cplexLGR.getObjValue();
+		double temp = 0;
+		for ( j = 0; j < multiplier.getSize(); ++j )
+			temp += multiplier[j]*state[j];
+		gap = (ub - objVal - temp) / ub;
+		cout << "Current gap: " << gap << "   Absolute difference: " << ub - objVal - temp << endl;
 		
-		norm_grad = 0.0;
-		stepSize = 0.05 / sqrt(i+1);
-		
-		// obtain and revise gradient
-		cplexLGR.getValues(gradient, model.z);
-		// cout << "current solution:" << gradient << endl;
-		// cout << "current objective function: " << objLGR << endl;
-		for ( j = 0; j < gradient.getSize(); ++j)
-		{
-			gradient[j] -= state[j];
-			norm_grad += pow(abs(gradient[j]),2);
-		}
-		cout << "norm of the current gradient: " << norm_grad << endl;
-		cout << "gradient: " << gradient << endl;
-
 		// optimality check
-		if ( norm_grad < 1e-5 )
-			break;
-		else
+		if ( gap < 1e-4 )
 		{
+			optimalFlag = 1;
+			cout << "Lagrangian problem is solved to optimality." << endl;
+			break;
+		}
+		else if ( i < numIter - 1 )
+		{
+			norm_grad = 0.0;
+			stepSize = 50.0 / sqrt(i+1);
+		
+			// obtain and revise gradient
+			cplexLGR.getValues(gradient, model.z);
+			for ( j = 0; j < gradient.getSize(); ++j)
+			{
+				gradient[j] -= state[j];
+				norm_grad += gradient[j] * gradient[j];
+			}
 			// update multiplier and objective function
 			for ( j = 0; j < multiplier.getSize(); ++j )
 			{
@@ -766,11 +739,6 @@ void LGupdate ( IloModel & modelLGR, IloCplex & cplexLGR, IloObjective & objLGR,
 				objLGR.setLinearCoef(model.z[j], -multiplier[j]);
 			}
 		}
-	}
-	if ( norm_grad >= 1e-5 )
-	{	
-		cplexLGR.solve();
-		objVal = cplexLGR.getObjValue();
 	}
 	scenObj.add(objVal);
 }
