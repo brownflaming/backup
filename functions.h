@@ -34,22 +34,20 @@ inline void readArray (T & target, const char * fileName)
 
 void readData (formatData * fData_p);
 
-void buildModel (Model * models, formatData * fData_p);
+void buildModel (model * models, formatData * fData_p);
 
-void getSamplePaths (IloNumArray3& samplePaths, IloNumArray3 & coefSamplePaths, formatData * fData_p);
+void getSamplePaths (forwardPath & samplePaths, formatData * fData_p);
 
-void forward (Model * models, formatData * fData_p, const IloNumArray3 samplePaths, const IloNumArray3 coefSamplePaths,
-		IloNumArray3 & candidateSol, IloNumArray & ub, IloNumArray & ub_l, IloNumArray & ub_r);
+void forward (model * models, formatData * fData_p,
+	const forwardPath samplePaths, IloNumArray3 & candidateSol,
+	IloNumArray & ub_c, IloNumArray & ub_l, IloNumArray & ub_r);
 
-void backward (Model * models, formatData * fData_p, const IloNumArray3 candidateSol,
-		IloNumArray & lb, std::unordered_set<std::string> & masterSol,
-		const bool bendersFlag, const bool impvdBendersFlag,
-		const bool integerFlag, const bool lagrangianFlag );
+void backward (model * models, formatData * fData_p,
+	const IloNumArray3 candidateSol, IloNumArray & lb, bool cutFlag[4], const IloInt iter);
 
-void LGupdate( IloModel & modelLGR, IloCplex & cplexLGR, IloObjective & objLGR,
-		IloNumArray & multiplier, IloNumArray & scenObj,
-		const Model model, const std::vector<int> state, const double ub);
-	
+double LGsolve (model & LGmodel, IloNumArray & dualVar,
+	IloNumVarArray z, const std::vector<int> state, const double ub );
+
 double avg ( std::vector<float> & v );
 
 double std_dev ( std::vector<float> & v );

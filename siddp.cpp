@@ -27,10 +27,11 @@ int main (int argc, char *argv[])
 			throw (-1);
 		}
 
-		const bool bendersFlag = atoi(argv[1]);
-		bool impvdBendersFlag = atoi(argv[2]);
-		bool lagrangianFlag = atoi(argv[3]);
-		bool integerFlag = atoi(argv[4]);
+		bool cutFlag[4];
+		cutFlag[0] = atoi(argv[1]);  // Benders' cut
+		cutFlag[1] = atoi(argv[2]);  // Improved Benders' cut
+		cutFlag[2] = atoi(argv[3]);  // Lagrangian cut
+		cutFlag[3] = atoi(argv[4]);  // L-shaped cut
 		//if ( impvdBendersFlag + lagrangianFlag )
 		// 	integerFlag = 0;
 
@@ -55,17 +56,16 @@ int main (int argc, char *argv[])
 		cout << "==================================================" << endl;
 
 		// construct models from fData
-		Model * models = new Model[fData.numStage];
+		model * models = new model[fData.numStage];
 		buildModel(models, fData_p);
 		cout << "Model construction completed." << endl;
+		cout << "==================================================" << endl;
 
 		// start siddp method
 		// clock_t startTime = clock();
 		chrono::time_point<chrono::system_clock> start, end;
 		chrono::duration<double> elapsed_seconds;
 		double runtime, runtime_fw, runtime_bw;
-
-		cout << "==================================================" << endl;
 		start = chrono::system_clock::now();
 
 		cout << "Starting SDDP procedure ... " << endl;
@@ -77,44 +77,25 @@ int main (int argc, char *argv[])
 
 		IloInt iteration = 0; // iteration counter
 
-		// create an array to store the sampled paths (rhs) in the forward pass
-		IloNumArray3 samplePaths(fData.dataEnv);
-		// create an array to store the sampled paths (coeff) in the forward pass
-		IloNumArray3 coefSamplePaths(fData.dataEnv);
-		// create an array to store the candidate solutions corrsp. to the sampled paths
+		forwardPath samplePaths;
+		// forwardPath * samplePaths_p = & samplePaths;
 		IloNumArray3 candidateSol(fData.dataEnv);
-
-		unordered_set<string> masterSol;
-		unordered_set<string> uniqCandidateSol;
-		unsigned masterSize_old, masterSize_new;
 
 		// start the loop until some stopping creterior is hit		
 		do
 		{
 			iteration += 1;
-			cout << "================================" << endl;
-			cout << "================================" << endl;
+			cout << "********************************" << endl;
+			cout << "********************************" << endl;			
 			cout << "Iteration: " << iteration << endl;
-
-			//getSamplePaths(samplePaths, fData_p, unif, generator);
-			getSamplePaths(samplePaths, coefSamplePaths, fData_p);
-			
-			cout << "Forward sample paths obtained." << endl;
-			
+			getSamplePaths(samplePaths, fData_p);	
+			cout << "Forward sample paths obtained." << endl;	
 			cout << "================================" << endl;
-
-			forward(models, fData_p, samplePaths, coefSamplePaths, candidateSol, ub_c, ub_l, ub_r);
-
+			forward(models, fData_p, samplePaths, candidateSol, ub_c, ub_l, ub_r);
 			cout << "Forward pass completed." << endl;
 			cout << "================================" << endl;
-			
-			// insert master solution to unordered_set masterSol
-			for ( int p = 0; p < fData.numFWsample; ++p )
-			{
-				masterSol.insert(toString(candidateSol[p][0]));
-			}
-
-			masterSize_old = masterSol.size();
+			// cout << candidateSol << endl;
+			// cin.get();
 			
 			/*
 			if ( (! integerFlag) && (! lagrangianFlag) && (iteration > 2) )
@@ -125,61 +106,46 @@ int main (int argc, char *argv[])
 					impvdBendersFlag = 0;
 				}
 			}
-			*/
-			
 			cout << "L-shaped cuts: " << integerFlag << endl;
+			*/
 
-			backward(models, fData_p, candidateSol, lb, masterSol, bendersFlag, impvdBendersFlag, integerFlag, lagrangianFlag);
-
+			backward(models, fData_p, candidateSol, lb, cutFlag, iteration);
 			cout << "Backward pass completed." << endl;
 			cout << "================================" << endl;
 
 			cout << "lb: "   << lb   << endl;
 			cout << "ub_c: " << ub_c << endl;
 			cout << "ub_r: " << ub_r << endl;
-
 			cout << "number of iterations finished: " << iteration << endl;
-			
-			for ( int p = 0; p < fData.numFWsample; ++p )
-			{
-				uniqCandidateSol.insert(toString(candidateSol[p]));
-			}
-
-			// if master problem produce a solution encountered before, increase sample size.
-			masterSize_new = masterSol.size();
 
 			candidateSol.clear();
-			samplePaths.clear();
-			coefSamplePaths.clear();
+			samplePaths = {};
+
 
 			/* Stopping criteria heuristic
 			    After a certain number of iterations, if lower bound starts to stablize,
 				i.e., variance of the last five lower bounds is small enough
 			*/
 			
-			if ( iteration > 12 )
+			if ( iteration >= 5 )
 			{
 				vector<float> recentLB;
-				for ( int i = 1; i < 10; ++i )
+				for ( int i = 1; i < 4; ++i )
 					recentLB.push_back(lb[iteration-i]);
 
 				double stdReLB = std_dev(recentLB);
 				if ( stdReLB < TOLOPT )
 				{
-					if ( fData.numFWsample == 300 )
+					if ( fData.numFWsample == 50 )
 					{
 						cout << "Lower bound has stablized." << endl;
 						break;
 					}
 					else
-					{
-						fData.numFWsample = 300;
-					}				
+						fData.numFWsample = 50;			
 				}
 				else
-				{
 					fData.numFWsample = initSampleSize;
-				}
 			}
 			
 			end = chrono::system_clock::now();
@@ -188,25 +154,25 @@ int main (int argc, char *argv[])
 
 		} while ( (iteration < MAXITER) && (runtime < 18000) );
 
-		fData.numFWsample = 1500;
-		getSamplePaths(samplePaths, coefSamplePaths, fData_p);	
-		forward(models, fData_p, samplePaths, coefSamplePaths, candidateSol, ub_c, ub_l, ub_r);
+		fData.numFWsample = 100;
+		getSamplePaths(samplePaths, fData_p);
+		forward(models, fData_p, samplePaths, candidateSol, ub_c, ub_l, ub_r);
 
 		end = chrono::system_clock::now();
 		elapsed_seconds = end - start;
 		runtime = elapsed_seconds.count();
 		printf("Total running time %.2f seconds.\n", runtime);
 
-		ofstream output ("0208_result.txt", ios::out | ios::app);
+		ofstream output ("0215_result.txt", ios::out | ios::app);
 		if ( output.is_open() )
 		{
 			output << "==================================================" << endl;
 			output << "==================================================" << endl;
 			output << "time horizon: " << fData.numStage << endl;
-			output << "Benders cut: " << bendersFlag << endl;
-			output << "Improved Benders cut: " << impvdBendersFlag << endl;
-			output << "Lagrangian cut: " << lagrangianFlag << endl;
-			output << "Integer Optimality cut: " << integerFlag << endl;
+			output << "Benders cut: " << cutFlag[0] << endl;
+			output << "Improved Benders cut: " << cutFlag[1] << endl;
+			output << "Lagrangian cut: " << cutFlag[2] << endl;
+			output << "Integer Optimality cut: " << cutFlag[3] << endl;
 			output << "FW sample paths: " << initSampleSize << endl;
 			output << "total iterations: " << iteration << endl;
 			output << "total time elapsed: " << runtime << " seconds." << endl;
@@ -216,7 +182,7 @@ int main (int argc, char *argv[])
 			output << "right 95\% CI for the upper bound: " << ub_r << endl;
 		}
 
-		ofstream table ("0208_table.txt", ios::out | ios::app);
+		ofstream table ("0226.csv", ios::out | ios::app);
 		if ( table.is_open() )
 		{
 			table << initSampleSize << ", " << 
@@ -235,9 +201,8 @@ int main (int argc, char *argv[])
 		ub_l.end();
 		ub_c.end();
 		ub_r.end();
-		samplePaths.end();
 		candidateSol.end();
-		masterSol.clear();
+		samplePaths = {};
 
 	}
 	catch (const IloException& e)
@@ -255,4 +220,3 @@ int main (int argc, char *argv[])
 
    	return 0;
 }
-

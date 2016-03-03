@@ -1,467 +1,192 @@
 #!/usr/bin/env python
+
 import numpy as np
-from scipy.stats import truncnorm
+import math as m
 import os
+import pandas as pd
+import pdb
+
+
+def write(filename, object):
+	myFile = open(filename, "w")
+	myFile.write(object)
+	myFile.close()
+
 
 if __name__ == "__main__":
 
-    HORIZON = 5
-    GENERATOR_LIST = {0: 'BaseLoad', 1: 'CC', 2: 'CT', 3: 'Nuclear', 4: 'Wind', 5: 'IGCC'}
-    MAX_OUTPUT = np.array([1130.0, 390.0, 380.0, 1180.0, 175.0, 560.0])
-    MAX_UNIT = np.array([4, 10, 10, 1, 45, 4], np.int32)
-    SUBPERIOD = 3
-    SUBPERIOD_HOUR = np.array([271.0, 6556.0, 1933.0])
+	numStage = 5
+	scenPerStage = 20
+	numScen = np.ones(numStage, np.int32) * scenPerStage
+	numScen = np.insert(numScen, 0, 1)
+	numFWsample = 2
+	numStock = 80
+	nrow = 2* numStock + 2
+	buy = 0.00 * np.ones(numStock) # transaction fee
+	sell = 0.00 * np.ones(numStock) # transaction fee
 
-    CONSTRUCTION_COST = np.array([1.446, 0.795, 0.575, 1.613, 1.650, 1.671])
-    MAX_CAPACITY = np.array([1200.0, 400.0, 400.0, 1200.0, 500.0, 600.0])
-
-    FUEL_PRICE = np.array([3.37, 9.37, 9.37, 0.93e-3, 0, 3.37]) * 1e-6
-    RATIO = [8.844 / 0.4, 7.196 / 0.56, 10.842 / 0.4, 10.400 / 0.45, 0.0, 8.613 / 0.48]
-    FUEL_PRICE_GROWTH = 0.02
-    OPERATING_COST = np.array([4.7, 2.11, 3.66, 0.51, 5.00, 2.98]) * 1e-6
-    OPER_COST_GROWTH = 0.03
-    PENALTY_COST = 1e-1
-    LAMBDA = np.array([1.38, 1.04, 0.80])
-    HOURS_PER_YEAR = 8760.0
-    rate = 0.08     # interest rate
-    #price_mean = np.ones(HORIZON) * 9.37
-    price_mean = np.array([9.37000, 9.79257, 10.23477, 10.69770, 11.18226, 11.68951, 12.22057, 12.77657, 13.35693, 13.96636])
-    price_std = np.array([0.0, 0.9477973, 1.2146955, 1.4957925, 1.7848757, 2.0798978, 2.3814051, 2.6911019, 3.0063683, 3.3382216])
-    #price_std = np.zeros(HORIZON)
-
-
-    nType = len(GENERATOR_LIST)     # number of technology
-    nUnit = sum(MAX_UNIT)           # sum of maximum construction
-    binLength = np.floor(np.log2(MAX_UNIT)).astype(int)
-    sumLength = sum(binLength) + nType
-
-    numFWsample = 2
-    scenPerStage = 100
-
-    numScen = np.ones(HORIZON - 1, np.int32) * scenPerStage
-    numScen = np.insert(numScen, 0, 1)
-
-    initState = np.zeros(sumLength)
-    valueLB = np.zeros(HORIZON)
-
-    D0 = 0.57
-    scenarios = [[0] * numScen[i] for i in xrange(HORIZON)]
-    scenarios[0][0] = [0.0] * 2 * SUBPERIOD  # (d, -d)
-
-    demand_tree = [[0] * numScen[i] for i in xrange(HORIZON)]
-    demand_tree[0][0] = [0.0] * SUBPERIOD
-
-    for t in xrange(1, HORIZON):
-        sample = D0 * (1.015 ** t - 1.005 ** t) * np.random.sample((scenPerStage,)) + D0 * 1.005 ** t
-        scenarios[t] = list(sample)
-        for j in xrange(numScen[t]):
-            temp = LAMBDA * max(scenarios[t][j] - D0, 0.0) * 1e9 / HOURS_PER_YEAR
-            demand_tree[t][j] = list(temp)
-            temp = np.concatenate((temp, -temp))
-            scenarios[t][j] = list(temp)
-
-	price = [[0] * numScen[t] for t in xrange(HORIZON)]
-	price[0][0] = price_mean[0] * 1e-12 / 1.028
+	x_ub = 100 ## upper bound on x variables, this is problem dependent
+	epsilon = 1e-2 ## accuracy of binary approximation
+	k1 = int(m.log(np.ceil(x_ub)-1, 2)) + 1  # number of binary needed for integer part
+	k2 = int(m.log(1.0/epsilon, 2)) + 1 # number of binary needed for decimal part
+	k = k1 + k2
+	print k1, k2
 	
-	for t in xrange(1, HORIZON):
-		sample = (price_mean[t] + price_std[t] * truncnorm.rvs(-1, 1, size=numScen[t])) * 1e-12 / 1.028
-		price[t] = list(sample)
-		
-    ''' Parameters used by tree model '''
+	assetLimit = int(0.5 * numStock) # transaction limit
 
-    treeDataDir = "test_tree_model/data_" + str(HORIZON) + "/"
-    if not os.path.exists(treeDataDir):
-        os.makedirs(treeDataDir)
+	dimX = k * numStock
+	T = np.zeros((numStock, dimX))   # binary expansion matrix hat{x} = T*x
+	for i in range(numStock):
+		for j in range(k1, -k2, -1):
+			T[i][k1 - j + k * i] = 2**(j-1)
+	# print T
 
-    # number of stages
-    myFile = open(treeDataDir + "numStage.dat", "w")
-    myFile.write(str(HORIZON))
-    myFile.close()
+	initState = np.zeros(k * numStock)
+	initState[2] = 1
+	#initState[k1-1] = 1
+	thetaLB = -500.0 * np.ones(numStage)
+	temp = np.tile([-0.2*epsilon, 0.2*epsilon], (numStock, 1))
+	constrSlack = np.row_stack((temp, np.zeros((nrow-numStock, 2))))
+	constrSlack = np.transpose(constrSlack)
+	# print constrSlack
 
-    # number of generators
-    myFile = open(treeDataDir + "numGen.dat", "w")
-    myFile.write(str(nType))
-    myFile.close()
+	dataDir = "bin/data/"
+	if not os.path.exists(dataDir):
+		os.makedirs(dataDir)
 
-    # number of subperiods
-    myFile = open(treeDataDir + "numSub.dat", "w")
-    myFile.write(str(SUBPERIOD))
-    myFile.close()
+	write(dataDir + "numStage.dat", str(numStage))
+	write(dataDir + "numScen.dat", str(numScen.tolist()))
+	write(dataDir + "numFWsample.dat", str(numFWsample))
+	write(dataDir + "initState.dat", str(initState.tolist()))
+	write(dataDir + "thetaLB.dat", str(thetaLB.tolist()))
+	write(dataDir + "constrSlack.dat", str(constrSlack.tolist()))
 
-    # number of children
-    myFile = open(treeDataDir + "numChi.dat", "w")
-    myFile.write(str(scenPerStage))
-    myFile.close()
+	#######################################################################
+	# coefficient for x
+	xObj = np.zeros((numStage - 1, dimX))
+	xObj = np.row_stack((xObj, np.dot(-np.ones(numStock), T)))
+	write(dataDir + "x.dat", str(xObj.tolist()))
+	print "xObj: ", xObj.shape
+	# print xObj
+	# pdb.set_trace()
 
-    # number of nodes
-    numNode = (scenPerStage ** HORIZON - 1) / (scenPerStage - 1)
-    myFile = open(treeDataDir + "numNode.dat", "w")
-    myFile.write(str(numNode))
-    myFile.close()
+	# coefficient for y1
+	y1Obj = np.zeros((numStage, numStock))
+	write(dataDir + "y1.dat", str(y1Obj.tolist()))
+	print "y1Obj", y1Obj.shape
 
-    # max output
-    myFile = open(treeDataDir + "maxOutput.dat", "w")
-    myFile.write("[")
-    for i in xrange(MAX_OUTPUT.shape[0]):
-        myFile.write(str(MAX_OUTPUT[i]))
-        if i != MAX_OUTPUT.shape[0] - 1:
-            myFile.write(",")
-    myFile.write("]")
-    myFile.close()
+	# coefficient for y2
+	y2Obj = np.zeros((numStage, numStock * 2))
+	write(dataDir + "y2.dat", str(y2Obj.tolist()))
+	print "y2Obj", y2Obj.shape
 
-    # max units
-    myFile = open(treeDataDir + "maxUnit.dat", "w")
-    myFile.write("[")
-    for i in xrange(MAX_UNIT.shape[0]):
-        myFile.write(str(MAX_UNIT[i]))
-        if i != MAX_UNIT.shape[0] - 1:
-            myFile.write(",")
-    myFile.write("]")
-    myFile.close()
+	## matrix of x variables
+	A = np.zeros((numStage, nrow, dimX))
+	matX = np.row_stack((np.identity(numStock), np.identity(numStock), np.zeros((2, numStock))))
+	matX = np.dot(matX, T)
+	for t in xrange(numStage):
+		A[t] = matX
+	write(dataDir + "A.dat", str(A.tolist()))
+	print "A: ", A.shape
 
-    # scenarios
-    myFile = open(treeDataDir + "demand.dat", "w")
-    myFile.write(str(scenarios))
-    myFile.close()
+	## matrix of z variables
+	B = np.zeros((numStage, nrow, dimX))
+	matZ = np.row_stack((-np.identity(numStock), np.zeros((numStock+2, numStock))))
+	matZ = np.dot(matZ, T)
+	for t in xrange(numStage):
+		B[t] = matZ
+	write(dataDir + "B.dat", str(B.tolist()))
+	print "B: ", B.shape
 
-    # xCoef of tree model
-    prob = 1.0 / scenPerStage
-    xCoef = np.zeros((HORIZON, nType))
-    totalCost = np.multiply(CONSTRUCTION_COST, MAX_CAPACITY)
-    for t in np.arange(HORIZON):
-        xCoef[t] = (prob ** t) * totalCost / (1 + rate) ** t
+	## matrix of y1 (local integer) variables
+	W1 = np.zeros((numStage, nrow, numStock))
+	matY1 = np.row_stack(( np.zeros((numStock, numStock)), - x_ub*np.identity(numStock),\
+	 np.ones(numStock), np.zeros(numStock) ))
+	for t in xrange(numStage):
+		W1[t] = matY1
+	write(dataDir + "W1.dat", str(W1.tolist()))
+	print "W1: ", W1.shape
 
-    myFile = open(treeDataDir + "xCoef.dat", "w")
-    myFile.write("[")
-    for row in xrange(xCoef.shape[0]):
-        myFile.write("[")
-        for column in xrange(xCoef.shape[1]):
-            myFile.write(str(xCoef[row, column]))
-            if column != xCoef.shape[1] - 1:
-                myFile.write(",")
-        myFile.write("]")
-        if row != xCoef.shape[0] - 1:
-            myFile.write(",")
-    myFile.write("]")
-    myFile.close()
+	## matrix of y2 (local continuous) variables
+	W2 = np.zeros((numStage, nrow, numStock * 2))
+	matY2 = np.column_stack((-np.identity(numStock), np.identity(numStock)))
+	matY2 = np.row_stack((matY2, np.zeros((numStock + 1, numStock * 2))))
+	temp = np.concatenate((1 + buy, sell - 1))
+	matY2 = np.row_stack((matY2, temp))
+	for t in xrange(numStage):
+		W2[t] = matY2
+	write(dataDir + "W2.dat", str(W2.tolist()))
+	print "W2: ", W2.shape
 
-    # yCoef of tree model
-    yCoef = []
-    for t in np.arange(HORIZON):
-    	yCoef_t = [ [0] * SUBPERIOD for n in xrange(numScen[t]) ]
-    	for n in xrange(numScen[t]):
-    		for k in xrange(SUBPERIOD):
-    			temp = np.multiply(FUEL_PRICE, RATIO) * (1 + FUEL_PRICE_GROWTH) ** t
-    			for i in [1, 2]:
-    				temp[i] = price[t][n] * RATIO[i]
-    			temp = temp + OPERATING_COST * (1 + OPER_COST_GROWTH) ** t
-    			temp = (prob ** t) * SUBPERIOD_HOUR[k] * temp / (1 + rate) ** t
-    			yCoef_t[n][k] = list(temp)
-    	yCoef.append(yCoef_t)
-    #print yCoef
-            
-    myFile = open(treeDataDir + "yCoef.dat", "w")
-    myFile.write(str(yCoef))
-    myFile.close()
+	## slack matrix S
+	S = np.identity(nrow)
+	for i in range(numStock): S[i][i] = 0
+	S[-1][-1] = 0
+	write(dataDir + "S.dat", str(S.tolist()))
+	print "S: ", S.shape
 
-    # zCoef of tree model
-    zCoef = np.zeros((HORIZON, SUBPERIOD))
-    for t in np.arange(HORIZON):
-        zCoef[t] = (prob ** t) * SUBPERIOD_HOUR * PENALTY_COST / (1 + rate) ** t
-    
-    myFile = open(treeDataDir + "zCoef.dat", "w")
-    myFile.write("[")
-    for t in xrange(zCoef.shape[0]):
-        myFile.write("[")
-        for k in xrange(zCoef.shape[1]):
-            myFile.write(str(zCoef[t, k]))
-            if k != zCoef.shape[1] - 1:
-                myFile.write(",")
-        myFile.write("]")
-        if t != zCoef.shape[0] - 1:
-            myFile.write(",")
-    myFile.write("]")
-    myFile.close()
+	## rhs of constraints
+	b = np.zeros((numStage, nrow))
+	rhs = np.concatenate((np.zeros(2*numStock), [assetLimit, 0]))
+	for t in xrange(numStage): b[t] = rhs
+	write(dataDir + "rhs.dat", str(b.tolist()))
+	print "b: ", b.shape
+	# print rhs
+
+	## uncertainty data index
+	uncertainData = np.array([1, 0, 0, 0, 1, 0, 0, 0])
+	write(dataDir + "uncertainData.dat", str(uncertainData.tolist()))
+
+	####################################################################
+	universe = pd.read_csv("return.csv")
+	idxLength = len(universe.index)
+	scenTree = np.ones((numStage+1, scenPerStage, numStock))
+	# stock_ind = list(np.floor(np.random.sample(numStock) * 99).astype(int))
+	stock_ind = range(3, numStock+3)
+	# print list(stock_ind.astype(int))
+	# print universe.ix[1,list(stock_ind.astype(int))]
+
+	for t in range(1, numStage+1):
+		# sample_ind = np.array(range(scenPerStage)) + (t-1) * scenPerStage
+		# sample_ind = np.array(range(scenPerStage)) + (t+5) * scenPerStage
+		sample_ind = np.ceil(np.random.sample(numScen[t]) * idxLength)
+		# print np.array(universe.ix[sample_ind,stock_ind])
+		# print sample_ind, stock_ind
+		scenTree[t][:,0:numStock] = np.array(universe.ix[sample_ind,stock_ind])
+
+	## xObjScenarios (T x scenPerStage x numStock)
+	xScen = np.zeros((numStage, scenPerStage, dimX))
+	temp = np.dot(np.sum(scenTree[-1], axis=0)/scenTree[-1].shape[0], T)
+	for k in xrange(scenPerStage): xScen[-1][k] = - temp
+	write(dataDir + "xScen.dat", str(xScen.tolist()))
+	print "xScen: ", xScen.shape
+	# print xScen[1]
+
+	## BmatrixScenarios (T x scenPerStage, 2 * numStock, numStock)
+	BScen = np.zeros((numStage, scenPerStage, nrow, dimX))
+	for t in xrange(numStage):
+		for k in xrange(scenPerStage):
+			matZ = np.row_stack((-np.diag(scenTree[t][k]), np.zeros((numStock+2, numStock))))
+			BScen[t][k] = np.dot(matZ, T)
+	write(dataDir + "BScen.dat", str(BScen.tolist()))
+	print "BScen: ", BScen.shape
+	# print BScen
+	print scenTree
+
+	####################################################################
+	# extensive formulation data
+	dataDir = "tree/data/"
+	if not os.path.exists(dataDir):
+		os.makedirs(dataDir)
+
+	write(dataDir + "numStage.dat", str(numStage))
+	write(dataDir + "numStock.dat", str(numStock))
+	write(dataDir + "numChi.dat", str(scenPerStage))
+	write(dataDir + "assetLimit.dat", str(assetLimit))
+	write(dataDir + "buyTran.dat", str(buy))
+	write(dataDir + "sellTran.dat", str(sell))
+	write(dataDir + "initState.dat", str(np.dot(T, initState).tolist()))
+	write(dataDir + "scenario.dat", str(scenTree.tolist()))
 
 
-    ''' Parameters used by SDDP '''
 
-    dataDir = "bin/test_data/" + str(HORIZON) + "_" + str(scenPerStage) + "/"
-    if not os.path.exists(dataDir):
-        os.makedirs(dataDir)
-
-    # number of stages
-    myFile = open(dataDir + "numStage.dat", "w")
-    myFile.write(str(HORIZON))
-    myFile.close()
-
-    # initial state variable
-    myFile = open(dataDir + "initState.dat", "w")
-    myFile.write("[")
-    for i in xrange(initState.shape[0]):
-        myFile.write(str(initState[i]))
-        if i != initState.shape[0] - 1:
-            myFile.write(",")
-    myFile.write("]")
-    myFile.close()
-
-    # number of forward samples
-    myFile = open(dataDir + "numFWsample.dat", "w")
-    myFile.write(str(numFWsample))
-    myFile.close()
-
-    # number of scenarios at each stage
-    myFile = open(dataDir + "numScen.dat", "w")
-    myFile.write("[")
-    for i in xrange(numScen.shape[0]):
-        myFile.write(str(numScen[i]))
-        if i != numScen.shape[0] - 1:
-            myFile.write(",")
-    myFile.write("]")
-    myFile.close()
-
-    # lower bounds for value functions
-    myFile = open(dataDir + "valueLB.dat", "w")
-    myFile.write("[")
-    for i in xrange(valueLB.shape[0]):
-        myFile.write(str(valueLB[i]))
-        if i != valueLB.shape[0] - 1:
-            myFile.write(",")
-    myFile.write("]")
-    myFile.close()
-
-    # scenarios
-    myFile = open(dataDir + "scenarios.dat", "w")
-    myFile.write(str(scenarios))
-    myFile.close()
-
-    # y2Coef scenarios
-    y2Scenarios = [ [0] * numScen[t] for t in xrange(HORIZON) ]
-    for t in xrange(HORIZON):
-    	for n in xrange(numScen[t]):
-    		temp = [];
-    		for k in xrange(SUBPERIOD):
-    			temp = temp + list(np.array(yCoef[t][n][k]) * (np.reciprocal(prob) ** t))
-    			temp.append(zCoef[t][k] * (prob ** (-t)))
-    		y2Scenarios[t][n] = temp
-
-    myFile = open(dataDir + "y2Scenarios.dat", "w")
-    myFile.write(str(y2Scenarios))
-    myFile.close()
-
-    #print y2Scenarios
-
-    ''' Construct data for objective function c x + b1 y1 + b2 y2 '''
-    # construct c (coefficients for x state variabls)
-    # doesn't show up in objective funcion, thus all zeros
-    xCoef = np.zeros(sumLength)
-    print "x.shape", xCoef.shape
-
-    myFile = open(dataDir + "xCoef.dat", "w")
-    myFile.write("[")
-    for t in xrange(HORIZON):
-        myFile.write("[")
-        for row in xrange(xCoef.shape[0]):
-            myFile.write(str(xCoef[row]))
-            if row != xCoef.shape[0] - 1:
-                myFile.write(",")
-        myFile.write("]")
-        if t != HORIZON - 1:
-            myFile.write(",")
-    myFile.write("]")
-    myFile.close()
-
-    # construct b1 (coefficients for y1 integer variabls)
-    y1Coef = np.zeros((HORIZON, nType))
-    totalCost = np.multiply(CONSTRUCTION_COST, MAX_CAPACITY)
-    for t in np.arange(HORIZON):
-        y1Coef[t] = totalCost / (1 + rate) ** t
-
-    print "y1.shape", y1Coef.shape
-
-    myFile = open(dataDir + "y1Coef.dat", "w")
-    myFile.write("[")
-    for row in xrange(y1Coef.shape[0]):
-        myFile.write("[")
-        for column in xrange(y1Coef.shape[1]):
-            myFile.write(str(y1Coef[row, column]))
-            if column != y1Coef.shape[1] - 1:
-                myFile.write(",")
-        myFile.write("]")
-        if row != y1Coef.shape[0] - 1:
-            myFile.write(",")
-    myFile.write("]")
-    myFile.close()
-
-    # construct b2 (coefficients for y2 continuous variables
-    # by default, we choose the first scenario to construct the problem
-    y2Coef = np.zeros((HORIZON, SUBPERIOD * (nType + 1)))
-    for t in np.arange(HORIZON):
-        y2Coef[t] = y2Scenarios[t][0]
-
-    print "y2.shape", y2Coef.shape
-
-    myFile = open(dataDir + "y2Coef.dat", "w")
-    myFile.write("[")
-    for row in xrange(y2Coef.shape[0]):
-        myFile.write("[")
-        for column in xrange(y2Coef.shape[1]):
-            myFile.write(str(y2Coef[row, column]))
-            if column != y2Coef.shape[1] - 1:
-                myFile.write(",")
-        myFile.write("]")
-        if row != y2Coef.shape[0] - 1:
-            myFile.write(",")
-    myFile.write("]")
-    myFile.close()
-
-    ''' Construct data for constraints A x + W1 y1 + W2 y2 + B z >= rhs '''
-    P = np.zeros((nType, sumLength))
-    for i in xrange(nType):
-        P[i, sum(binLength[0:i]) + i: sum(binLength[0:i + 1]) + i + 1] = 2**np.arange(binLength[i] + 1)
-
-    # construct matrix A (x variable)
-    A = np.vstack((np.zeros((4 * nType, sumLength)),
-                   P, -P,
-                   np.zeros((2 * SUBPERIOD, sumLength))))
-
-    print "A.shape:", A.shape
-
-    myFile = open(dataDir + "Amatrix.dat", "w")
-    myFile.write("[")
-    for t in np.arange(HORIZON):
-        myFile.write("[")
-        for row in xrange(A.shape[0]):
-            myFile.write("[")
-            for column in xrange(A.shape[1]):
-                myFile.write(str(A[row, column]))
-                if column != A.shape[1] - 1:
-                    myFile.write(",")
-            myFile.write("]")
-            if row != A.shape[0] - 1:
-                myFile.write(",")
-        myFile.write("]")
-        if t != HORIZON - 1:
-            myFile.write(",")
-    myFile.write("]")
-    myFile.close()
-
-    # construct matrix W1 (y1 integer variables)
-    I = np.identity(nType)
-    W1 = np.vstack((I, I, I, -I, -I, I,
-                    np.zeros((2 * SUBPERIOD, nType))))
-
-    print "W1.shape:", W1.shape
-
-    myFile = open(dataDir + "W1matrix.dat", "w")
-    myFile.write("[")
-    for t in np.arange(HORIZON):
-        myFile.write("[")
-        for row in xrange(W1.shape[0]):
-            myFile.write("[")
-            for column in xrange(W1.shape[1]):
-                myFile.write(str(W1[row, column]))
-                if column != W1.shape[1] - 1:
-                    myFile.write(",")
-            myFile.write("]")
-            if row != W1.shape[0] - 1:
-                myFile.write(",")
-        myFile.write("]")
-        if t != HORIZON - 1:
-            myFile.write(",")
-    myFile.write("]")
-    
-    # construct matrix W2 (y2 continuous variable)
-    temp = -1.0 / MAX_OUTPUT
-    R = np.diagflat([temp, temp, temp])
-    for k in xrange(SUBPERIOD):
-        R = np.insert(R, nType * (k + 1), 0.0, axis=1)
-
-    row1 = np.hstack((np.ones(nType + 1),
-                      np.zeros((SUBPERIOD - 1) * (nType + 1))))
-    row2 = np.hstack((np.zeros(nType + 1),
-                      np.ones(nType + 1),
-                      np.zeros(nType + 1)))
-    row3 = np.hstack((np.zeros((SUBPERIOD - 1) * (nType + 1)),
-                      np.ones(nType + 1)))
-    demandLHS = np.vstack((row1, row2, row3, -row1, -row2, -row3))
-
-    W2 = np.vstack((R, np.zeros((3 * nType, SUBPERIOD * (nType + 1))), demandLHS))
-
-    print "W2.shape:", W2.shape
-
-    myFile = open(dataDir + "W2matrix.dat", "w")
-    myFile.write("[")
-    for t in np.arange(HORIZON):
-        myFile.write("[")
-        for row in xrange(W2.shape[0]):
-            myFile.write("[")
-            for column in xrange(W2.shape[1]):
-                myFile.write(str(W2[row, column]))
-                if column != W2.shape[1] - 1:
-                    myFile.write(",")
-            myFile.write("]")
-            if row != W2.shape[0] - 1:
-                myFile.write(",")
-        myFile.write("]")
-        if t != HORIZON - 1:
-            myFile.write(",")
-    myFile.write("]")
-    myFile.close()
-
-    # construct B matrix (z variables, local copy of state variable from last period)
-    B = np.vstack((P, P, P, -P, -P, P,
-                   np.zeros((2 * SUBPERIOD, sumLength))))
-
-    print "B.shape:", B.shape
-
-    myFile = open(dataDir + "Bmatrix.dat", "w")
-    myFile.write("[")
-    for t in np.arange(HORIZON):
-        myFile.write("[")
-        for row in xrange(B.shape[0]):
-            myFile.write("[")
-            for column in xrange(B.shape[1]):
-                myFile.write(str(B[row, column]))
-                if column != B.shape[1] - 1:
-                    myFile.write(",")
-            myFile.write("]")
-            if row != B.shape[0] - 1:
-                myFile.write(",")
-        myFile.write("]")
-        if t != HORIZON - 1:
-            myFile.write(",")
-    myFile.write("]")
-    myFile.close()
-
-    # construct rhs
-    rhs = np.hstack((np.zeros((SUBPERIOD * nType)), -MAX_UNIT,
-                     np.zeros(2 * nType + 2 * SUBPERIOD)))
-
-    print "rhs.shape:", rhs.shape
-
-    myFile = open(dataDir + "bRhs.dat", "w")
-    myFile.write("[")
-    for t in np.arange(HORIZON):
-        myFile.write("[")
-        for row in xrange(rhs.shape[0]):
-            myFile.write(str(rhs[row]))
-            if row != rhs.shape[0] - 1:
-                myFile.write(",")
-        myFile.write("]")
-        if t != HORIZON - 1:
-            myFile.write(",")
-    myFile.write("]")
-    myFile.close()
-
-    # uncertain indices for the rhs
-    uncertainIndexRHS = np.arange(rhs.shape[0] - 6, rhs.shape[0])
-
-    myFile = open(dataDir + "uncertainIndexRHS.dat", "w")
-    myFile.write("[")
-    for i in xrange(uncertainIndexRHS.shape[0]):
-        myFile.write(str(uncertainIndexRHS[i]))
-        if i != uncertainIndexRHS.shape[0] - 1:
-            myFile.write(",")
-    myFile.write("]")
-    myFile.close()

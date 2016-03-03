@@ -1,6 +1,14 @@
 #!/bin/bash
 
+make
 cd bin
+./gep 1 1 1 1
+cd ..
+
+
+
+
+# cd bin
 
 # cp inst_data/data_5/* data/
 # ./gep 1 0 0 0
@@ -23,7 +31,7 @@ cd bin
 # done
 
 ########################################
-cp inst_data/data_10/* data/
+# cp inst_data/data_10/* data/
 
 # strengthened benders + lagrangian
 # for K in 10 20 50
@@ -97,14 +105,14 @@ cp inst_data/data_10/* data/
 # 	done
 # done
 
-integer
-for K in 1 2 3 5 10 20 50
-do
-	cd data
-	echo $K > numFWsample.dat
-	cd ..
-	./gep 0 0 0 1
-done
+# integer
+# for K in 1 2 3 5 10 20 50
+# do
+#	cd data
+#	echo $K > numFWsample.dat
+#	cd ..
+#	./gep 0 0 0 1
+#done
 #########################################
 
 #bendersFlag=1
