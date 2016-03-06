@@ -45,7 +45,7 @@ struct formatData
 	IloNumArray3 y1Scen; //scenarios for y1 objective coefficients [t][numScen[t]][dimY1]
 	IloNumArray3 y2Scen; //scenarios for y2 objective coefficients [t][numScen[t]][dimY2]
 	IloNumArray4 AScen;  //scenarios for A matrix [t][numScen[t]][numRows][dimX]
-	IloNumArray4 BScen;  //scenarios for B matrix [t][numScen[t]][numRows][dimZ]
+	IloNumArray4 BScen;  //scenarios for B matrix [t][numScen[t]][3][#nonzeros]
 	IloNumArray4 W1Scen; //scenarios for W1 matrix [t][numScen[t]][numRows][dimY1]
 	IloNumArray4 W2Scen; //scenarios for W2 matrix [t][numScen[t]][numRows][dimY2]
 	IloNumArray3 bScen;  //scenarios for b [t][numScen[t]][numRows]

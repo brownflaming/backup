@@ -48,6 +48,8 @@ void backward (model * models, formatData * fData_p,
 double LGsolve (model & LGmodel, IloNumArray & dualVar,
 	IloNumVarArray z, const std::vector<int> state, const double ub );
 
+// bool checkCut(IloRangeArray cuts, IloRange newcut);
+
 double avg ( std::vector<float> & v );
 
 double std_dev ( std::vector<float> & v );

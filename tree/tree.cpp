@@ -27,13 +27,14 @@ int main ()
 		// load data //
 		cout << "Reading data from files..." << endl;
 		IloInt numStage, numStock, numChi, assetLimit;
-		IloNum buyTran, sellTran;
+		IloNumArray buyTran(env);
+		IloNumArray sellTran(env);
 		IloNumArray initState(env);
 		readArray<IloInt> (numStage, "data/numStage.dat");
 		readArray<IloInt> (numStock, "data/numStock.dat");
 		readArray<IloInt> (numChi, "data/numChi.dat");
-		readArray<IloNum> (buyTran, "data/buyTran.dat");
-		readArray<IloNum> (sellTran, "data/sellTran.dat");
+		readArray<IloNumArray> (buyTran, "data/buyTran.dat");
+		readArray<IloNumArray> (sellTran, "data/sellTran.dat");
 		readArray<IloNumArray> (initState, "data/initState.dat");
 		readArray<IloInt> (assetLimit, "data/assetLimit.dat");
 
@@ -84,7 +85,6 @@ int main ()
 				pos[n][i].setName(varName);
 			}
 
-
 			mod.add(x[n]);
 			mod.add(buy[n]);
 			mod.add(sell[n]);
@@ -127,11 +127,22 @@ int main ()
 				}
 				expr.clear();
 
+				// not short sell
+				for ( i = 0; i < numStock; ++i )
+				{
+					if ( n == 0 )
+						expr = initState[i] - sell[n][i];
+					else
+						expr = scenario[t][k][i] * x[(n-1)/numChi][i] - sell[n][i];
+					constr.add(expr >= 0);
+				}
+				expr.clear();
+
 				// self-financing constraints 
 				for ( i = 0; i < numStock; ++i )
 				{
-					expr += (1 + buyTran) * buy[n][i];
-					expr -= (1 - sellTran) * sell[n][i];
+					expr += (1 + buyTran[i]) * buy[n][i];
+					expr -= (1 - sellTran[i]) * sell[n][i];
 				}
 				constr.add(expr == 0);
 				expr.clear();
@@ -167,11 +178,22 @@ int main ()
 
 		cout << "=============================================" << endl;
 		IloAlgorithm::Status solStatus;
+		IloNum objVal;
 		solStatus = cplex.getStatus();
+		objVal = cplex.getObjValue();
 		cout << "solution status: " << solStatus << endl;	
 		if ( solStatus == IloAlgorithm::Optimal )
 		{
 			cout << "Optimal value: " << cplex.getObjValue() << endl;
+			ofstream table ("tree.csv", ios::out | ios::app);
+			if ( table.is_open() )
+			{
+				table << numStage << ", " <<
+				NT <<
+				objVal << ", " << 
+				cplex.getTime() << endl;
+			}
+		}
 			/*
 			cout << scenario << endl;
 			IloNumArray val(env);
@@ -187,7 +209,6 @@ int main ()
 				cout << "sell decision: " << val << endl;
 			}
 			*/
-		}
 	}
 	catch (const IloException & e)
 	{

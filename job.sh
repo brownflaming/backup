@@ -1,10 +1,45 @@
 #!/bin/bash
 
-make
 cd bin
-./gep 1 1 1 1
-cd ..
 
+for T in 3 4 5
+do
+	for K in 10 15 20
+	do
+		cp data/${T}_${K}/* data/
+		./pfopt 0 1 0 1
+		clear
+	done
+done
+
+# cd ../tree
+
+# for T in 3 4
+# do
+# 	for K in 10 15 25
+# 	do
+# 		cp data/${T}_${K}/* data/
+# 		./tree
+# 		clear
+# 	done
+# done
+
+
+# cd bin
+# for K in 10 15 25
+# do
+# 	cp data/3_${K}/* data/
+# 	./pfopt 0 1 0 1
+# 	clear
+# done
+
+# cd ../tree
+# for K in 10 15 25
+# do
+# 	cp data/3_${K}/* data/
+# 	./tree
+# 	clear
+# done
 
 
 

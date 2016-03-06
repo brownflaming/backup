@@ -47,6 +47,24 @@ int main (int argc, char *argv[])
 		formatData * fData_p = & fData;
 		readData (fData_p);
 
+		
+		// IloNumArray4 x = IloNumArray4(fData.dataEnv, 4);
+		// for ( int i = 0; i < 4; ++i )
+		// {
+		// 	x[i] = IloNumArray3(fData.dataEnv, 3);
+		// 	for (int j = 0; j < 3; ++j )
+		// 	{
+		// 		x[i][j] = IloNumArray2(fData.dataEnv, 5);
+		// 		for (int k = 0; k < 5; ++k)
+		// 			x[i][j][k] = IloNumArray(fData.dataEnv, 10);
+		// 	}
+
+		// }
+		// cout << x[2][2][1][6] * 5 + 3 << endl;
+		// cout << "????????" << endl;
+		// cout << x << endl;
+		// cin.get();
+
 		cout << "All data has been read into fData." << endl;
 		cout << "==================================================" << endl;
 		cout << "total number of stages: " << fData.numStage << endl;
@@ -88,7 +106,7 @@ int main (int argc, char *argv[])
 			cout << "********************************" << endl;
 			cout << "********************************" << endl;			
 			cout << "Iteration: " << iteration << endl;
-			getSamplePaths(samplePaths, fData_p);	
+			getSamplePaths(samplePaths, fData_p);
 			cout << "Forward sample paths obtained." << endl;	
 			cout << "================================" << endl;
 			forward(models, fData_p, samplePaths, candidateSol, ub_c, ub_l, ub_r);
@@ -127,10 +145,10 @@ int main (int argc, char *argv[])
 				i.e., variance of the last five lower bounds is small enough
 			*/
 			
-			if ( iteration >= 5 )
+			if ( iteration >= 4 )
 			{
 				vector<float> recentLB;
-				for ( int i = 1; i < 4; ++i )
+				for ( int i = 1; i < 3; ++i )
 					recentLB.push_back(lb[iteration-i]);
 
 				double stdReLB = std_dev(recentLB);
@@ -163,7 +181,7 @@ int main (int argc, char *argv[])
 		runtime = elapsed_seconds.count();
 		printf("Total running time %.2f seconds.\n", runtime);
 
-		ofstream output ("0215_result.txt", ios::out | ios::app);
+		ofstream output ("0305.txt", ios::out | ios::app);
 		if ( output.is_open() )
 		{
 			output << "==================================================" << endl;
@@ -182,18 +200,23 @@ int main (int argc, char *argv[])
 			output << "right 95\% CI for the upper bound: " << ub_r << endl;
 		}
 
-		ofstream table ("0226.csv", ios::out | ios::app);
+		ofstream table ("0305.csv", ios::out | ios::app);
 		if ( table.is_open() )
 		{
-			table << initSampleSize << ", " << 
+			table << fData.numStage << ", " <<
+				fData.numScen[1] << ", " <<
+				fData.totalScen << ", " <<
+				initSampleSize << ", " << 
 				lb[iteration-1] << ", " <<
 				iteration << ", " <<
 				ub_l[iteration] << ", " <<
 				ub_r[iteration] << ", " <<
-				(ub_r[iteration] - lb[iteration-1])/ub_r[iteration] << ", " <<
-				runtime / iteration << ", " <<
-				runtime << endl;
+				setiosflags(ios::fixed | ios::showpoint) << setprecision(4) <<
+				-(ub_r[iteration] - lb[iteration-1])/ub_r[iteration] << ", " <<
+				int(runtime / iteration) << ", " <<
+				int(runtime) << endl;
 		}
+
 
 		// free memory
 		delete [] models;

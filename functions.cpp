@@ -12,7 +12,6 @@
 #include "functions.h"
 #include "mt64.h"
 
-
 using namespace std;
 
 void readData (formatData * fData_p)
@@ -92,44 +91,76 @@ void readData (formatData * fData_p)
 	readArray<IloIntArray> (fData_p->uncertainData, "data/uncertainData.dat");
 	IloIntArray index = fData_p->uncertainData;
 
+	IloInt dimX = fData_p->x[0].getSize();   // state variables - binary
+	IloInt dimZ = dimX;						  // copy of state variables
+	IloInt dimY1 = fData_p->y1[0].getSize(); // current stage integral variables
+	IloInt dimY2 = fData_p->y2[0].getSize(); // current stage continuous variables
+	IloInt numRows = fData_p->A[0].getSize();
+
 	if ( index[0] )
 	{
 		fData_p->xScen = IloNumArray3(*dataEnv, numStage);
+		cout << "load xScen..." << endl;
 		readArray<IloNumArray3> (fData_p->xScen, "data/xScen.dat");
 	}
 	if ( index[1] )
 	{
 		fData_p->y1Scen = IloNumArray3(*dataEnv, numStage);
+		cout << "load y1Scen..." << endl;
 		readArray<IloNumArray3> (fData_p->y1Scen, "data/y1Scen.dat");
 	}
 	if ( index[2] )
 	{
 		fData_p->y2Scen = IloNumArray3(*dataEnv, numStage);
+		cout << "load y2Scen..." << endl;
 		readArray<IloNumArray3> (fData_p->y2Scen, "data/y2Scen.dat");
 	}
 	if ( index[3] )
 	{
 		fData_p->AScen = IloNumArray4(*dataEnv, numStage);
+		cout << "load AScen..." << endl;
 		readArray<IloNumArray4> (fData_p->AScen, "data/AScen.dat");
 	}
 	if ( index[4] )
 	{
 		fData_p->BScen = IloNumArray4(*dataEnv, numStage);
-		readArray<IloNumArray4> (fData_p->BScen, "data/BScen.dat");
+		cout << "load BScen..." << endl;
+		char fileName[100];
+		for ( int t = 0; t < fData_p->numStage; ++t )
+		{
+			fData_p->BScen[t] = IloNumArray3(*dataEnv, fData_p->numScen[t]);
+			IloNumArray3 sparseData = IloNumArray3(*dataEnv, fData_p->numScen[t]);
+			sprintf(fileName, "data/BScen_%d.dat", t);
+			readArray<IloNumArray3> (sparseData, fileName);
+			for ( int k = 0; k < fData_p->numScen[t]; ++k )
+			{
+				IloNumArray2 M = IloNumArray2(*dataEnv, numRows);
+				for (int i = 0; i < numRows; ++i )
+					M[i] = IloNumArray(*dataEnv, dimZ);
+				int kk = sparseData[k][0].getSize();
+				for (int j = 0; j < kk; ++j )
+					M[int(sparseData[k][0][j])][int(sparseData[k][1][j])] = sparseData[k][2][j];
+				fData_p->BScen[t][k] = M;
+			}
+			sparseData.end();
+		}
 	}
 	if ( index[5] )
 	{
 		fData_p->W1Scen = IloNumArray4(*dataEnv, numStage);
+		cout << "load W1Scen..." << endl;
 		readArray<IloNumArray4> (fData_p->W1Scen, "data/W1Scen.dat");
 	}
 	if ( index[6] )
 	{
 		fData_p->W2Scen = IloNumArray4(*dataEnv, numStage);
+		cout << "load W2Scen..." << endl;
 		readArray<IloNumArray4> (fData_p->W2Scen, "data/W2Scen.dat");
 	}
 	if ( index[7] )
 	{
 		fData_p->bScen = IloNumArray3(*dataEnv, numStage);
+		cout << "load bScen..." << endl;
 		readArray<IloNumArray3> (fData_p->bScen, "data/bScen.dat");
 	}
 } // End of readData
@@ -268,7 +299,7 @@ void buildModel (model * models, formatData * fData_p)
 
 		// set model algorithm
 		// models[t].cplex.setParam(IloCplex::RootAlg, IloCplex::Primal);
-		models[t].cplex.setParam(IloCplex::EpGap, 1e-2);
+		models[t].cplex.setParam(IloCplex::EpGap, 0.01);
 
 		// set model solve output
 		models[t].cplex.setOut(models[t].env.getNullStream());
@@ -458,10 +489,14 @@ void forward (model * models, formatData * fData_p,
 					models[t].cplex.getValues(vals, models[t].x);
 					for ( i = 0; i < vals.getSize(); ++i )
 						vals[i] = round(vals[i]);
-					// cout << vals << endl;
 					// cout << models[t].cplex.getObjValue() << endl;
 					//cin.get();
 					candidateSol[p].add(vals);
+
+					// IloNumArray val2(fData_p->dataEnv);
+					// models[t].cplex.getValues(val2, models[t].y2);
+					// cout << val2 << endl;
+					// cin.get();
 					
 					// Update objective function value of current sample path:
 					// sampleObj[p] += models[t].ObjValue - theta_{t+1}^*
@@ -501,6 +536,7 @@ void forward (model * models, formatData * fData_p,
 	ub_l.add(center - halfLength);
 	ub_r.add(center + halfLength);
 	// cout << "objective value for forward sample paths: " << sampleObj << endl;
+	// cout << candidateSol << endl;
 	/*
 	cout << ub_l << endl;
 	cout << ub_c << endl;
@@ -546,8 +582,12 @@ void backward (model * models, formatData * fData_p,
 		for ( auto it = uniqueSet.begin(); it != uniqueSet.end(); ++it )
 			uniqueSol.push_back(getDigit(*it));
 
+		int m = 0;
 		for ( auto it = uniqueSol.begin(); it != uniqueSol.end(); ++it )  // 
 		{
+			m += 1;
+			cout << "Evaluating candidate solution: " << m << endl;
+			cout << "\e[A";
 			// cout << "Total number of scenarios at this stage: " << fData_p->numScen[t] << endl;
 			// create arrays to store MIP, Lagrangian with optimal LP dual, and LP optimal values
 			IloNumArray scenMIPobj(fData_p->dataEnv);
@@ -582,6 +622,13 @@ void backward (model * models, formatData * fData_p,
 				}
 				if ( index[7] )
 					models[t].constr1.setBounds(fData_p->bScen[t][k], fData_p->bScen[t][k]);
+
+				// update the state variables z_t = x_{t-1}
+				for ( i = 0; i < dimX; ++i )
+				{
+					// cout << (*it)[i];
+					models[t].constr2[i].setBounds( (*it)[i], (*it)[i] );
+				}
 
 				// char fileName[100];
 				// sprintf(fileName, "model_%d.lp", t);
@@ -620,7 +667,7 @@ void backward (model * models, formatData * fData_p,
 					IloConversion relaxVarY(models[t].env, models[t].y1, ILOFLOAT);
 					models[t].mod.add(relaxVarX);
 					models[t].mod.add(relaxVarY);
-
+					
 					if ( models[t].cplex.solve() ) // feasible
 					{
 						// get solution status
@@ -726,13 +773,16 @@ void backward (model * models, formatData * fData_p,
 				if ( cutFlag[1] )
 				{
 					rhs = IloSum(scenLGobj) / fData_p->numScen[t];
-					cout << "Improved Benders' cut added." << endl;
+					// cout << "Improved Benders', ";
 				}
 				else
 				{
 					rhs = IloSum(scenLPobj) / fData_p->numScen[t] - inner_product(LPdualAvg.begin(), LPdualAvg.end(), (*it).begin(), 0);
-					cout << "Benders' cut added." << endl;
+					// cout << "Benders', ";
 				}
+				// IloRange newcut(models[t-1].env, rhs, expr);
+				// cout << checkCut(models[t-1].cuts, newcut) << endl;
+				// cin.get();
 				models[t-1].cuts.add(expr >= rhs);
 				models[t-1].mod.add(expr >= rhs);
 				expr.end();
@@ -747,7 +797,7 @@ void backward (model * models, formatData * fData_p,
 				rhs = IloSum(scenLGOPTobj) / fData_p->numScen[t];
 				models[t-1].cuts.add(expr >= rhs);
 				models[t-1].mod.add(expr >= rhs);
-				cout << "Lagrangian cut added." << endl;
+				// cout << "Lagrangian, ";
 				expr.end();
 			}
 
@@ -767,9 +817,11 @@ void backward (model * models, formatData * fData_p,
 				rhs = fData_p->thetaLB[t-1] - (mipObjAve - fData_p->thetaLB[t-1]) * (accumulate( (*it).begin(), (*it).end(), 0) -1);
 				models[t-1].cuts.add(expr >= rhs);
 				models[t-1].mod.add(expr >= rhs);
-				cout << "L-shaped cut added." << endl;
+				// cout << "Integer L-shaped, ";
 				expr.end();
 			}
+
+			// cout << "cuts are added." << endl;
 
 			// free momery
 			scenMIPobj.end();
@@ -803,10 +855,10 @@ void backward (model * models, formatData * fData_p,
 		if ( solStatus == IloAlgorithm::Optimal )
 		{
 			// update lower bound lb as the optimal objective function value
-			lb.add(models[0].cplex.getObjValue());
-			char fileName[100];
-			sprintf(fileName, "model_%d_%d.lp", t, iter);
-			models[t].cplex.exportModel(fileName);
+			lb.add(models[0].cplex.getBestObjValue());
+			// char fileName[100];
+			// sprintf(fileName, "model_%d_%d.lp", t, iter);
+			// models[t].cplex.exportModel(fileName);
 		}
 		else // not optimal
 		{
@@ -872,6 +924,24 @@ double LGsolve (model & LGmodel, IloNumArray & dualVar, IloNumVarArray z,
 	}
 	return objVal;
 } // End of subgradient method
+
+// bool checkCut(IloRangeArray cuts, IloRange newcut)
+// {
+// 	int k = cuts.getSize();
+// 	for (int i = 0; i < k ; ++i)
+// 	{
+// 		IloExpr expr = cuts[i].getExpr();
+// 		IloNum LB = cuts[i].getLB();
+// 		IloExpr newExpr = newcut.getExpr();
+// 		IloNum newLB = newcut.getLB();
+// 		if ( (expr - newExpr == 0) && (abs(LB - newLB) < 1e-6) )
+// 		{
+// 			return 1;
+// 			break;
+// 		}
+// 	}
+// 	return 0;
+// }
 
 double avg ( vector<float> & v )
 {
