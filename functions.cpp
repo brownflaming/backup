@@ -143,6 +143,7 @@ void readData (formatData * fData_p)
 				fData_p->BScen[t][k] = M;
 			}
 			sparseData.end();
+			cout << "period " << t << endl;
 		}
 	}
 	if ( index[5] )

@@ -1,0 +1,126 @@
+==================================================
+==================================================
+time horizon: 3
+Benders cut: 0
+Improved Benders cut: 1
+Lagrangian cut: 0
+Integer Optimality cut: 1
+FW sample paths: 2
+total iterations: 5
+total time elapsed: 153.189 seconds.
+lower bounds improvement: [-200, -105.068, -105.068, -105.068, -105.068]
+upper bounds improvement: [-98.532, -117.261, -105.19, -101.486, -104.402, -103.1]
+left 95% CI for the upper bound: [-100.118, -117.261, -120.924, -121.507, -106.853, -104.701]
+right 95% CI for the upper bound: [-96.946, -117.261, -89.4554, -81.4652, -101.951, -101.498]
+==================================================
+==================================================
+time horizon: 3
+Benders cut: 0
+Improved Benders cut: 1
+Lagrangian cut: 0
+Integer Optimality cut: 1
+FW sample paths: 2
+total iterations: 5
+total time elapsed: 226.174 seconds.
+lower bounds improvement: [-200, -200, -106.89, -106.89, -106.89]
+upper bounds improvement: [-102.454, -96.5811, -101.565, -107.886, -107.882, -106.664]
+left 95% CI for the upper bound: [-114.513, -104.701, -115.215, -109.651, -110.193, -108.424]
+right 95% CI for the upper bound: [-90.3951, -88.4609, -87.9161, -106.122, -105.571, -104.903]
+==================================================
+==================================================
+time horizon: 3
+Benders cut: 0
+Improved Benders cut: 1
+Lagrangian cut: 0
+Integer Optimality cut: 1
+FW sample paths: 2
+total iterations: 5
+total time elapsed: 305.47 seconds.
+lower bounds improvement: [-200, -105.783, -105.783, -105.783, -105.783]
+upper bounds improvement: [-102.794, -100.972, -111.498, -101.147, -104.465, -105.062]
+left 95% CI for the upper bound: [-106.372, -108.13, -111.498, -102.635, -105.795, -106.483]
+right 95% CI for the upper bound: [-99.216, -93.8152, -111.498, -99.6595, -103.134, -103.641]
+==================================================
+==================================================
+time horizon: 4
+Benders cut: 0
+Improved Benders cut: 1
+Lagrangian cut: 0
+Integer Optimality cut: 1
+FW sample paths: 2
+total iterations: 5
+total time elapsed: 412.267 seconds.
+lower bounds improvement: [-200, -115.094, -115.094, -115.094, -115.094]
+upper bounds improvement: [-98.6182, -105.567, -113.527, -125.737, -114.947, -114.648]
+left 95% CI for the upper bound: [-108.906, -108.804, -117.091, -133.884, -117.681, -116.619]
+right 95% CI for the upper bound: [-88.3301, -102.329, -109.963, -117.59, -112.214, -112.678]
+==================================================
+==================================================
+time horizon: 4
+Benders cut: 0
+Improved Benders cut: 1
+Lagrangian cut: 0
+Integer Optimality cut: 1
+FW sample paths: 2
+total iterations: 5
+total time elapsed: 720.553 seconds.
+lower bounds improvement: [-200, -107.354, -107.354, -107.354, -107.354]
+upper bounds improvement: [-98.5391, -102.415, -110.738, -104.16, -106.511, -106.876]
+left 95% CI for the upper bound: [-106.361, -109.605, -119.622, -108.688, -107.622, -107.891]
+right 95% CI for the upper bound: [-90.7168, -95.2257, -101.853, -99.6327, -105.4, -105.86]
+==================================================
+==================================================
+time horizon: 4
+Benders cut: 0
+Improved Benders cut: 1
+Lagrangian cut: 0
+Integer Optimality cut: 1
+FW sample paths: 2
+total iterations: 5
+total time elapsed: 363.402 seconds.
+lower bounds improvement: [-200, -107.479, -107.479, -107.479, -107.479]
+upper bounds improvement: [-90.4802, -108.688, -112.804, -99.8738, -109.062, -108.368]
+left 95% CI for the upper bound: [-91.1218, -115.655, -123.523, -111.739, -112.728, -110.544]
+right 95% CI for the upper bound: [-89.8385, -101.721, -102.085, -88.0084, -105.395, -106.193]
+==================================================
+==================================================
+time horizon: 5
+Benders cut: 0
+Improved Benders cut: 1
+Lagrangian cut: 0
+Integer Optimality cut: 1
+FW sample paths: 2
+total iterations: 5
+total time elapsed: 727.993 seconds.
+lower bounds improvement: [-200, -112.881, -112.881, -112.881, -112.881]
+upper bounds improvement: [-95.5411, -98.2192, -95.6441, -115.639, -111.124, -112.031]
+left 95% CI for the upper bound: [-105.176, -123.51, -109.844, -122.69, -115.123, -115.129]
+right 95% CI for the upper bound: [-85.9059, -72.9283, -81.4444, -108.587, -107.124, -108.933]
+==================================================
+==================================================
+time horizon: 5
+Benders cut: 0
+Improved Benders cut: 1
+Lagrangian cut: 0
+Integer Optimality cut: 1
+FW sample paths: 2
+total iterations: 5
+total time elapsed: 940.809 seconds.
+lower bounds improvement: [-200, -106.463, -106.463, -106.463, -106.463]
+upper bounds improvement: [-92.4425, -109.031, -103.922, -107.393, -105.543, -106.338]
+left 95% CI for the upper bound: [-111.451, -115.395, -114.155, -111.949, -106.708, -107.15]
+right 95% CI for the upper bound: [-73.4343, -102.668, -93.6885, -102.838, -104.379, -105.526]
+==================================================
+==================================================
+time horizon: 5
+Benders cut: 0
+Improved Benders cut: 1
+Lagrangian cut: 0
+Integer Optimality cut: 1
+FW sample paths: 2
+total iterations: 5
+total time elapsed: 1834.84 seconds.
+lower bounds improvement: [-200, -107.321, -107.321, -107.321, -107.321]
+upper bounds improvement: [-83.0221, -106.288, -106.319, -100.226, -106.977, -106.109]
+left 95% CI for the upper bound: [-88.1203, -110.877, -109.352, -101.194, -108.903, -107.408]
+right 95% CI for the upper bound: [-77.9239, -101.699, -103.286, -99.2591, -105.052, -104.809]

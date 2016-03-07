@@ -17,7 +17,7 @@ def write(filename, object):
 if __name__ == "__main__":
 
 	numStage = 5
-	scenPerStage = 20
+	scenPerStage = 25
 	numScen = np.ones(numStage, np.int32) * scenPerStage
 	numScen = np.insert(numScen, 0, 1)
 	numFWsample = 2
