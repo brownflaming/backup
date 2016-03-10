@@ -2,15 +2,36 @@
 
 cd bin
 
-for T in 3 4 5
+
+cp data/6_20/* data/
+for k in 1 2 5
 do
-	for K in 10 15 20
+	cd data
+	echo $k > numFWsample.dat
+	cd ..
+	for n in 1 2 3
 	do
-		cp data/${T}_${K}/* data/
 		./pfopt 0 1 0 1
 		clear
 	done
 done
+
+cp data/7_20/* data/
+for k in 1 2
+do
+	cd data
+	echo $k > numFWsample.dat
+	cd ..
+	for n in 1 2 3
+	do
+		./pfopt 0 1 0 1
+		clear
+	done
+done
+
+
+
+
 
 # cd ../tree
 

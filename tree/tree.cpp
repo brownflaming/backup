@@ -26,7 +26,8 @@ int main ()
 	{
 		// load data //
 		cout << "Reading data from files..." << endl;
-		IloInt numStage, numStock, numChi, assetLimit;
+		IloInt numStage, numStock, numChi;
+		IloNumArray assetLimit(env);
 		IloNumArray buyTran(env);
 		IloNumArray sellTran(env);
 		IloNumArray initState(env);
@@ -36,7 +37,7 @@ int main ()
 		readArray<IloNumArray> (buyTran, "data/buyTran.dat");
 		readArray<IloNumArray> (sellTran, "data/sellTran.dat");
 		readArray<IloNumArray> (initState, "data/initState.dat");
-		readArray<IloInt> (assetLimit, "data/assetLimit.dat");
+		readArray<IloNumArray> (assetLimit, "data/assetLimit.dat");
 
 		IloNumArray3 scenario(env); //[numStage][numChi][numStock]
 		readArray<IloNumArray3> (scenario, "data/scenario.dat");
@@ -156,7 +157,7 @@ int main ()
 				expr.clear();
 				for ( i = 0; i < numStock; ++i )
 					expr += pos[n][i];
-				constr.add(expr <= assetLimit);
+				constr.add(assetLimit[0] <= expr <= assetLimit[1]);
 				expr.clear();
 
 			} //end of loop over n

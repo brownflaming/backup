@@ -16,14 +16,14 @@ def write(filename, object):
 
 if __name__ == "__main__":
 
-	numStage = 5
-	scenPerStage = 25
+	numStage = 9
+	scenPerStage = 15
 	numScen = np.ones(numStage, np.int32) * scenPerStage
 	numScen = np.insert(numScen, 0, 1)
 	numFWsample = 2
 	numStock = 100
-	assetLimit = int(0.5 * numStock) # asset holding limit
-	nrow = 4* numStock + 2
+	assetLimit = np.array([int(0.3*numStock), int(0.6 * numStock)]) # asset holding limit
+	nrow = 4* numStock + 3
 	buy = np.insert(0.01 * np.ones(numStock-1), 0, 0) # transaction fee
 	sell = np.insert(0.01 * np.ones(numStock-1), 0, 0) # transaction fee
 
@@ -88,7 +88,7 @@ if __name__ == "__main__":
 	## matrix of x variables
 	A = np.zeros((numStage, nrow, dimX))
 	matX = np.row_stack((np.identity(numStock), np.zeros((numStock, numStock)), \
-						 np.identity(numStock), np.zeros((numStock + 2, numStock))))
+						 np.identity(numStock), np.zeros((numStock + 3, numStock))))
 	matX = np.dot(matX, T)
 	for t in xrange(numStage):
 		A[t] = matX
@@ -98,7 +98,7 @@ if __name__ == "__main__":
 	## matrix of z variables
 	B = np.zeros((numStage, nrow, dimX))
 	matZ = np.row_stack((-np.identity(numStock), -np.identity(numStock),\
-						 np.zeros((2 * numStock + 2, numStock))))
+						 np.zeros((2 * numStock + 3, numStock))))
 	matZ = np.dot(matZ, T)
 	for t in xrange(numStage):
 		B[t] = matZ
@@ -108,7 +108,7 @@ if __name__ == "__main__":
 	## matrix of y1 (local integer) variables
 	W1 = np.zeros((numStage, nrow, numStock))
 	matY1 = np.row_stack((np.zeros((2 * numStock, numStock)), - x_ub * np.identity(numStock),\
-						  np.identity(numStock), np.ones(numStock), np.zeros(numStock) ))
+						  np.identity(numStock), -np.ones(numStock), np.ones(numStock), np.zeros(numStock) ))
 	for t in xrange(numStage):
 		W1[t] = matY1
 	write(dataDir + "W1.dat", str(W1.tolist()))
@@ -119,7 +119,7 @@ if __name__ == "__main__":
 	t1 = np.column_stack((-np.identity(numStock), np.identity(numStock)))
 	t2 = np.column_stack((np.zeros((numStock,numStock)), np.identity(numStock)))
 	t3 = np.concatenate((1 + buy, sell - 1))
-	matY2 = np.row_stack((t1, t2, np.zeros((2 * numStock + 1, numStock * 2)), t3))
+	matY2 = np.row_stack((t1, t2, np.zeros((2 * numStock + 2, numStock * 2)), t3))
 	for t in xrange(numStage):
 		W2[t] = matY2
 	write(dataDir + "W2.dat", str(W2.tolist()))
@@ -135,7 +135,8 @@ if __name__ == "__main__":
 
 	## rhs of constraints
 	b = np.zeros((numStage, nrow))
-	rhs = np.concatenate((np.zeros(3*numStock), np.ones(numStock), [assetLimit, 0]))
+	print np.ones(numStock).shape, assetLimit.shape
+	rhs = np.concatenate((np.zeros(3*numStock), np.ones(numStock), assetLimit, [0]))
 	for t in xrange(numStage): b[t] = rhs
 	write(dataDir + "rhs.dat", str(b.tolist()))
 	print "b: ", b.shape
@@ -177,7 +178,7 @@ if __name__ == "__main__":
 	for t in xrange(numStage):
 		for k in xrange(scenPerStage):
 			matZ = np.row_stack((- np.diag(scenTree[t][k]), - np.diag(scenTree[t][k]),\
-								 np.zeros((2 * numStock + 2, numStock))))
+								 np.zeros((2 * numStock + 3, numStock))))
 			BScen[t][k] = np.dot(matZ, T)
 			# print BScen[t][k]
 
@@ -214,7 +215,7 @@ if __name__ == "__main__":
 	write(dataDir + "numStage.dat", str(numStage))
 	write(dataDir + "numStock.dat", str(numStock))
 	write(dataDir + "numChi.dat", str(scenPerStage))
-	write(dataDir + "assetLimit.dat", str(assetLimit))
+	write(dataDir + "assetLimit.dat", str(assetLimit.tolist()))
 	write(dataDir + "buyTran.dat", str(buy.tolist()))
 	write(dataDir + "sellTran.dat", str(sell.tolist()))
 	write(dataDir + "initState.dat", str(np.dot(T, initState).tolist()))
