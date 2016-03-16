@@ -145,26 +145,26 @@ int main (int argc, char *argv[])
 				i.e., variance of the last five lower bounds is small enough
 			*/
 			
-			if ( iteration >= 4 )
-			{
-				vector<float> recentLB;
-				for ( int i = 1; i < 3; ++i )
-					recentLB.push_back(lb[iteration-i]);
+			// if ( iteration >= 4 )
+			// {
+			// 	vector<float> recentLB;
+			// 	for ( int i = 1; i < 3; ++i )
+			// 		recentLB.push_back(lb[iteration-i]);
 
-				double stdReLB = std_dev(recentLB);
-				if ( stdReLB < TOLOPT )
-				{
-					if ( fData.numFWsample == 50 )
-					{
-						cout << "Lower bound has stablized." << endl;
-						break;
-					}
-					else
-						fData.numFWsample = 50;			
-				}
-				else
-					fData.numFWsample = initSampleSize;
-			}
+			// 	double stdReLB = std_dev(recentLB);
+			// 	if ( stdReLB < TOLOPT )
+			// 	{
+			// 		if ( fData.numFWsample == 50 )
+			// 		{
+			// 			cout << "Lower bound has stablized." << endl;
+			// 			// break;
+			// 		}
+			// 		else
+			// 			fData.numFWsample = 50;			
+			// 	}
+			// 	else
+			// 		fData.numFWsample = initSampleSize;
+			// }
 			
 			end = chrono::system_clock::now();
 			elapsed_seconds = end - start;
@@ -172,7 +172,7 @@ int main (int argc, char *argv[])
 
 		} while ( (iteration < MAXITER) && (runtime < 18000) );
 
-		fData.numFWsample = 100;
+		fData.numFWsample = 1000;
 		getSamplePaths(samplePaths, fData_p);
 		forward(models, fData_p, samplePaths, candidateSol, ub_c, ub_l, ub_r);
 

@@ -26,7 +26,7 @@ CPLEXINCDIR   = $(CPLEXDIR)/include
 CCFLAGS = $(CCOPT) -I$(CPLEXINCDIR) -I$(CONCERTINCDIR) 
 
 OBJ_DIR = obj
-OUT_RELEASE = bin/pfopt
+OUT_RELEASE = bin/netopt
 
 OBJ_FILE = $(OBJ_DIR)/mt64.o $(OBJ_DIR)/functions.o $(OBJ_DIR)/siddp.o
 

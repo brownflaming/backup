@@ -1916,3 +1916,17 @@ lower bounds improvement: [-200, -116.53, -116.53, -116.53, -116.53]
 upper bounds improvement: [-99.4548, -119.705, -118.504, -128.782, -112.834, -115.027]
 left 95% CI for the upper bound: [-102.86, -130.697, -125.923, -134.195, -116.376, -117.827]
 right 95% CI for the upper bound: [-96.0501, -108.713, -111.086, -123.368, -109.292, -112.227]
+==================================================
+==================================================
+time horizon: 14
+Benders cut: 0
+Improved Benders cut: 1
+Lagrangian cut: 0
+Integer Optimality cut: 1
+FW sample paths: 2
+total iterations: 5
+total time elapsed: 108.329 seconds.
+lower bounds improvement: [-529920, -529920, -529920, -529920, -529920]
+upper bounds improvement: [0, 0, 0, 0, 0, 0]
+left 95% CI for the upper bound: [0, 0, 0, 0, 0, 0]
+right 95% CI for the upper bound: [0, 0, 0, 0, 0, 0]
