@@ -31,22 +31,27 @@ inline void readArray (T & target, const char * fileName)
 	data >> target;
 	data.close();
 }
+void sparse2full3d(IloNumArray3 & fullMat, IloInt dim [2], const char * fileName);
+
+void sparse2full2d(IloNumArray2 & fullMat, IloInt dim [2], const char * fileName);
 
 void readData (formatData * fData_p);
 
-void buildModel (model * models, formatData * fData_p);
+void buildModel (model * models, formatData * fData_p, const bool LP);
 
 void getSamplePaths (forwardPath & samplePaths, formatData * fData_p);
 
 void forward (model * models, formatData * fData_p,
 	const forwardPath samplePaths, IloNumArray3 & candidateSol,
-	IloNumArray & ub_c, IloNumArray & ub_l, IloNumArray & ub_r);
+	IloNumArray & ub_c, IloNumArray & ub_l, IloNumArray & ub_r,
+	const bool LP);
 
 void backward (model * models, formatData * fData_p,
-	const IloNumArray3 candidateSol, IloNumArray & lb, bool cutFlag[4], const IloInt iter);
+	const IloNumArray3 candidateSol, IloNumArray & lb,
+	const bool cutFlag[4], const bool LP, const IloInt iter);
 
 double LGsolve (model & LGmodel, IloNumArray & dualVar,
-	IloNumVarArray z, const std::vector<int> state, const double ub );
+	IloNumVarArray z, const IloNumArray state, const double ub );
 
 // bool checkCut(IloRangeArray cuts, IloRange newcut);
 

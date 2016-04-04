@@ -14,6 +14,41 @@
 
 using namespace std;
 
+
+void sparse2full3d(IloNumArray3 & fullMat, IloInt dim [2], const char * fileName)
+{
+	IloEnv env = fullMat.getEnv();
+	int stage = fullMat.getSize();
+	IloNumArray3 sparseMat = IloNumArray3(env, stage);
+	readArray<IloNumArray3> (sparseMat, fileName);
+	for ( int t = 0; t < stage; ++t )
+	{
+		IloNumArray2 M = IloNumArray2(env, dim[0]);
+		for ( int i = 0; i < dim[0]; ++i )
+			M[i] = IloNumArray(env, dim[1]);
+		int k = sparseMat[t][0].getSize(); // number of nonzero entries
+		for ( int i = 0; i < k; ++i )
+			M[int(sparseMat[t][0][i])][int(sparseMat[t][1][i])] = sparseMat[t][2][i];
+		fullMat[t] = M;
+	}
+	sparseMat.end();
+}
+
+void sparse2full2d(IloNumArray2 & fullMat, IloInt dim [2], const char * fileName)
+{
+	IloEnv env = fullMat.getEnv();
+	IloNumArray2 sparseMat = IloNumArray2(env, 3);
+	readArray<IloNumArray2> (sparseMat, fileName);
+	IloNumArray2 M = IloNumArray2(env, dim[0]);
+	for ( int i = 0; i < dim[0]; ++i )
+		M[i] = IloNumArray(env, dim[1]);
+	int k = sparseMat[0].getSize(); // number of nonzero entries
+	for ( int i = 0; i < k; ++i )
+		M[int(sparseMat[0][i])][int(sparseMat[1][i])] = sparseMat[2][i];
+	fullMat = M;
+	sparseMat.end();
+}
+
 void readData (formatData * fData_p)
 {
 	// create data environment
@@ -41,12 +76,12 @@ void readData (formatData * fData_p)
 	// read initial state of binary variables
 	fData_p->initState = IloNumArray(*dataEnv, numStage);
 	readArray<IloNumArray> (fData_p->initState, "data/initState.dat");
-	// cout << fData_p->initState << endl;
 
 	// read prescribed lower bound for value function at each stage
 	fData_p->thetaLB = IloNumArray(*dataEnv, numStage);
 	readArray<IloNumArray> (fData_p->thetaLB, "data/thetaLB.dat");
 
+	// read the tolerance of constraint feasibility (needed when continuous variables exist)
 	// fData_p->constrSlack = IloNumArray2(*dataEnv, 2);
 	// readArray<IloNumArray2> (fData_p->constrSlack, "data/constrSlack.dat");
 
@@ -67,108 +102,53 @@ void readData (formatData * fData_p)
 	readArray<IloNumArray2> (fData_p->b, "data/rhs.dat");
 
 	IloInt dimX = fData_p->x[0].getSize();   // state variables - binary
-	IloInt dimZ = dimX;						  // copy of state variables
-	IloInt dimY1 = fData_p->y1[0].getSize(); // current stage integral variables
-	IloInt dimY2 = fData_p->y2[0].getSize(); // current stage continuous variables
-	IloInt numRows = fData_p->b[0].getSize();
-	int t, i, j, k;
-	IloNumArray3 sparseData = IloNumArray3(*dataEnv, numStage);
+	IloInt dimZ = dimX;						 // copy of state variables
+	IloInt dimY1 = fData_p->y1[0].getSize(); // local integral variables
+	IloInt dimY2 = fData_p->y2[0].getSize(); // local continuous variables
+	IloInt numRows = fData_p->b[0].getSize();// number of constraints in constr1
 
 	// read matrix A
 	fData_p->A = IloNumArray3(*dataEnv, numStage);
-	readArray<IloNumArray3> (sparseData, "data/A.dat");
-	for ( t = 0; t < numStage; ++t )
-	{
-		IloNumArray2 M = IloNumArray2(*dataEnv, numRows);
-		for ( i = 0; i < numRows; ++i )
-			M[i] = IloNumArray(*dataEnv, dimX);
-		k = sparseData[t][0].getSize();
-		for ( i = 0; i < k; ++i )
-			M[int(sparseData[t][0][i])][int(sparseData[t][1][i])] = sparseData[t][2][i];
-		fData_p->A[t] = M;
-	}
-	sparseData.clear();
-
-	// cout << "A matrix complete." << endl;
+	IloInt dimA[2] = {numRows, dimX};
+	sparse2full3d(fData_p->A, dimA, "data/A.dat");
+	cout << "A matrix complete." << endl;
 	// cin.get();
 	
 	// read matrix B
 	fData_p->B = IloNumArray3(*dataEnv, numStage);
-	readArray<IloNumArray3> (sparseData, "data/B.dat");
-	for ( int t = 0; t < numStage; ++t )
-	{
-		IloNumArray2 M = IloNumArray2(*dataEnv, numRows);
-		for ( i = 0; i < numRows; ++i )
-			M[i] = IloNumArray(*dataEnv, dimZ);
-		k = sparseData[t][0].getSize();
-		for ( i = 0; i < k; ++i )
-			M[int(sparseData[t][0][i])][int(sparseData[t][1][i])] = sparseData[t][2][i];
-		fData_p->B[t] = M;
-	}
-	sparseData.clear();
-	
-	// cout << "B matrix complete." << endl;
+	IloInt dimB[2] = {numRows, dimZ};
+	sparse2full3d(fData_p->B, dimB, "data/B.dat");	
+	cout << "B matrix complete." << endl;
 	// cin.get();
 
 	// read matrix W1
 	fData_p->W1 = IloNumArray3(*dataEnv, numStage);
-	readArray<IloNumArray3> (sparseData, "data/W1.dat");
-	for ( t = 0; t < numStage; ++t )
-	{
-		IloNumArray2 M = IloNumArray2(*dataEnv, numRows);
-		for ( i = 0; i < numRows; ++i )
-			M[i] = IloNumArray(*dataEnv, dimY1);
-		k = sparseData[t][0].getSize();
-		for ( i = 0; i < k; ++i )
-			M[int(sparseData[t][0][i])][int(sparseData[t][1][i])] = sparseData[t][2][i];
-		fData_p->W1[t] = M;
-	}
-	sparseData.clear();
-
-	// cout << "W1 matrix complete." << endl;
+	IloInt dimW1[2] = {numRows, dimY1};
+	sparse2full3d(fData_p->W1, dimW1, "data/W1.dat");
+	cout << "W1 matrix complete." << endl;
 	// cin.get();
 
 	// read matrix W2
 	fData_p->W2 = IloNumArray3(*dataEnv, numStage);
-	readArray<IloNumArray3> (sparseData, "data/W2.dat");
-	for ( t = 0; t < numStage; ++t )
-	{
-		IloNumArray2 M = IloNumArray2(*dataEnv, numRows);
-		for ( i = 0; i < numRows; ++i )
-			M[i] = IloNumArray(*dataEnv, dimY2);
-		k = sparseData[t][0].getSize();
-		for ( i = 0; i < k; ++i )
-			M[int(sparseData[t][0][i])][int(sparseData[t][1][i])] = sparseData[t][2][i];
-		fData_p->W2[t] = M;
-	}
-	sparseData.end();
-
-	// cout << "W2 matrix complete." << endl;
+	IloInt dimW2[2] = {numRows, dimY2};
+	sparse2full3d(fData_p->W2, dimW2, "data/W2.dat");
+	cout << "W2 matrix complete." << endl;
 	// cin.get();
 
 	// read matrix S
-	fData_p->S = IloNumArray2(*dataEnv, numRows);
-	IloNumArray2 S0 = IloNumArray2(*dataEnv, 3);
-	readArray<IloNumArray2> (S0, "data/S.dat");
-	for ( i = 0; i < numRows; ++i )
-		fData_p->S[i] = IloNumArray(*dataEnv, numRows);
-	k = S0[0].getSize();
-	for ( i = 0; i < k; ++i )
-		fData_p->S[int(S0[0][i])][int(S0[1][i])] = S0[2][i];
-	S0.end();
-	
-	// cout << "S matrix complete." << endl;
+	fData_p->S = IloNumArray2(*dataEnv);
+	IloInt dimS[2] = {numRows, numRows};
+	sparse2full2d(fData_p->S, dimS, "data/S.dat");
+	cout << "S matrix complete." << endl;
 	// cin.get();
 
 	// read uncertain indices
 	fData_p->uncertainData = IloIntArray(*dataEnv, 8);
 	readArray<IloIntArray> (fData_p->uncertainData, "data/uncertainData.dat");
-	IloIntArray index = fData_p->uncertainData;
-
-	// cout << "uncertainData index complete." << endl;
+	cout << "uncertainData index complete." << endl;
 	// cin.get();
 
-	
+	IloIntArray index = fData_p->uncertainData;
 	if ( index[0] )
 	{
 		fData_p->xScen = IloNumArray3(*dataEnv, numStage);
@@ -191,44 +171,57 @@ void readData (formatData * fData_p)
 	{
 		fData_p->AScen = IloNumArray4(*dataEnv, numStage);
 		cout << "load AScen..." << endl;
-		readArray<IloNumArray4> (fData_p->AScen, "data/AScen.dat");
+		char fileName[100];
+		IloInt dimA [2] = {numRows, dimX};
+		for ( int t = 0; t < fData_p->numStage; ++t )
+		{
+			fData_p->AScen[t] = IloNumArray3(*dataEnv, fData_p->numScen[t]);
+			sprintf(fileName, "data/AScen_%d.dat", t);
+			sparse2full3d(fData_p->AScen[t], dimA, fileName);
+			// cout << "period " << t << endl;
+		}
 	}
 	if ( index[4] )
 	{
 		fData_p->BScen = IloNumArray4(*dataEnv, numStage);
 		cout << "load BScen..." << endl;
 		char fileName[100];
+		IloInt dimB [2] = {numRows, dimZ};
 		for ( int t = 0; t < fData_p->numStage; ++t )
 		{
 			fData_p->BScen[t] = IloNumArray3(*dataEnv, fData_p->numScen[t]);
-			IloNumArray3 sparseData = IloNumArray3(*dataEnv, fData_p->numScen[t]);
 			sprintf(fileName, "data/BScen_%d.dat", t);
-			readArray<IloNumArray3> (sparseData, fileName);
-			for ( int k = 0; k < fData_p->numScen[t]; ++k )
-			{
-				IloNumArray2 M = IloNumArray2(*dataEnv, numRows);
-				for (int i = 0; i < numRows; ++i )
-					M[i] = IloNumArray(*dataEnv, dimZ);
-				int kk = sparseData[k][0].getSize();
-				for (int j = 0; j < kk; ++j )
-					M[int(sparseData[k][0][j])][int(sparseData[k][1][j])] = sparseData[k][2][j];
-				fData_p->BScen[t][k] = M;
-			}
-			sparseData.end();
-			cout << "period " << t << endl;
+			sparse2full3d(fData_p->BScen[t], dimB, fileName);
+			// cout << "period " << t << endl;
 		}
 	}
 	if ( index[5] )
 	{
 		fData_p->W1Scen = IloNumArray4(*dataEnv, numStage);
 		cout << "load W1Scen..." << endl;
-		readArray<IloNumArray4> (fData_p->W1Scen, "data/W1Scen.dat");
+		char fileName[100];
+		IloInt dimW1 [2] = {numRows, dimY1};
+		for ( int t = 0; t < fData_p->numStage; ++t )
+		{
+			fData_p->W1Scen[t] = IloNumArray3(*dataEnv, fData_p->numScen[t]);
+			sprintf(fileName, "data/W1Scen_%d.dat", t);
+			sparse2full3d(fData_p->W1Scen[t], dimW1, fileName);
+			// cout << "period " << t << endl;
+		}
 	}
 	if ( index[6] )
 	{
 		fData_p->W2Scen = IloNumArray4(*dataEnv, numStage);
 		cout << "load W2Scen..." << endl;
-		readArray<IloNumArray4> (fData_p->W2Scen, "data/W2Scen.dat");
+		char fileName[100];
+		IloInt dimW2 [2] = {numRows, dimY2};
+		for ( int t = 0; t < fData_p->numStage; ++t )
+		{
+			fData_p->W2Scen[t] = IloNumArray3(*dataEnv, fData_p->numScen[t]);
+			sprintf(fileName, "data/W1Scen_%d.dat", t);
+			sparse2full3d(fData_p->W2Scen[t], dimW2, fileName);
+			// cout << "period " << t << endl;
+		}
 	}
 	if ( index[7] )
 	{
@@ -238,21 +231,22 @@ void readData (formatData * fData_p)
 	}
 } // End of readData
 
-void buildModel (model * models, formatData * fData_p)
+void buildModel (model * models, formatData * fData_p, const bool LP)
 {
 	cout << "Start to build one model for each stage..." << endl;
 
 	int t, i, j, k;
+	char varName[100];
 	IloInt numStage = fData_p->numStage;
 
 	// extract decision variable dimensions
 	IloInt dimX = fData_p->x[0].getSize();   // state variables - binary
-	IloInt dimZ = dimX;						  // copy of state variables
+	IloInt dimZ = dimX;						 // copy of state variables
 	IloInt dimY1 = fData_p->y1[0].getSize(); // current stage integral variables
 	IloInt dimY2 = fData_p->y2[0].getSize(); // current stage continuous variables
-	IloInt numRows = fData_p->A[0].getSize();
+	IloInt numRows = fData_p->b[0].getSize();// number of constraints in constr1
 
-	for (t = 0; t < numStage; ++t)
+	for ( t = 0; t < numStage; ++t )
 	{
 		cout << "start building model at stage " << t << endl;
 
@@ -262,16 +256,18 @@ void buildModel (model * models, formatData * fData_p)
 		models[t].mod = IloModel(currentEnv);
 
 		// create variables and add them to model
-		char varName[100];
-		
 		// x variable
-		models[t].x = IloNumVarArray(currentEnv, dimX, 0.0, 1.0, ILOINT);
+		if ( LP )
+			models[t].x = IloNumVarArray(currentEnv, dimX, 0.0, 1.0, ILOFLOAT);
+		else
+			models[t].x = IloNumVarArray(currentEnv, dimX, 0.0, 1.0, ILOINT);
 		for ( i = 0; i < dimX; ++i )
 		{
 			sprintf(varName, "x_%d", i+1);
 			models[t].x[i].setName(varName);
 		}
 		models[t].mod.add(models[t].x);
+
 		// z variable
 		models[t].z = IloNumVarArray(currentEnv, dimZ, 0.0, 1.0, ILOFLOAT);
 		for ( i = 0; i < dimZ; ++i )
@@ -280,9 +276,13 @@ void buildModel (model * models, formatData * fData_p)
 			models[t].z[i].setName(varName);
 		}
 		models[t].mod.add(models[t].z);
+
 		// y1 y2 variables
-		models[t].y1 = IloNumVarArray(currentEnv, dimY1, 0.0, IloInfinity, ILOINT);
-		models[t].y2 = IloNumVarArray(currentEnv, dimY2, 0.0, IloInfinity, ILOFLOAT);
+		if ( LP )
+			models[t].y1 = IloNumVarArray(currentEnv, dimY1, 0.0, 100, ILOFLOAT);
+		else
+			models[t].y1 = IloNumVarArray(currentEnv, dimY1, 0.0, 100, ILOINT);
+		models[t].y2 = IloNumVarArray(currentEnv, dimY2, 0.0, 200, ILOFLOAT);
 		for ( i = 0; i < dimY1; ++i )
 		{
 			sprintf(varName, "y1_%d", i+1);
@@ -295,20 +295,23 @@ void buildModel (model * models, formatData * fData_p)
 		}
 		models[t].mod.add(models[t].y1);
 		models[t].mod.add(models[t].y2);
+
 		// theta variable
-		models[t].theta = IloNumVar(currentEnv, fData_p->thetaLB[t], IloInfinity);
-		sprintf(varName, "theta");
+		models[t].theta = IloNumVar(currentEnv, fData_p->thetaLB[t], 1e8);
+		sprintf(varName, "theta_%d", t+1);
 		models[t].theta.setName(varName);
 		models[t].mod.add(models[t].theta);
+
 		// slack variables
-		models[t].s = IloNumVarArray(currentEnv, numRows, 0.0, IloInfinity, ILOFLOAT);
+		models[t].s = IloNumVarArray(currentEnv, numRows, 0.0, 2000, ILOFLOAT);
 		for ( i = 0; i < numRows; ++i )
 		{
 			sprintf(varName, "s_%d", i+1);
 			models[t].s[i].setName(varName);
 		}
 		models[t].mod.add(models[t].s);
-		// slack variables 2
+
+		// slack variables 2 （needed when continuous state variables exist）
 		// models[t].s2 = IloNumVarArray(currentEnv, fData_p->constrSlack[0], fData_p->constrSlack[1], ILOFLOAT);
 		// for ( i = 0; i < numRows; ++i )
 		// {
@@ -335,7 +338,6 @@ void buildModel (model * models, formatData * fData_p)
 
 		// create constraints
 		// Add constraints A_tx_t + B_tz_t + W1_ty1_t + W2_ty2_t + S s_t == b_t
-		
 		models[t].constr1 = IloRangeArray(currentEnv);
 		for (i = 0; i < numRows; ++i)
 		{
@@ -355,13 +357,7 @@ void buildModel (model * models, formatData * fData_p)
 		// Add constraints z_t = x_{t-1}, rhs initialized as 0
 		models[t].constr2 = IloRangeArray(currentEnv);
 		for (i = 0; i < dimZ; ++i)
-		{
-			IloExpr expr(currentEnv);
-			expr = models[t].z[i];
-			// initialize the state variable with initial state
-			models[t].constr2.add(expr == fData_p->initState[i]);
-			expr.end();
-		}
+			models[t].constr2.add(models[t].z[i] == fData_p->initState[i]);
 		models[t].mod.add(models[t].constr2);
 		// cout << "Constraints z_t = x_{t-1} added." << endl;
 
@@ -372,8 +368,9 @@ void buildModel (model * models, formatData * fData_p)
 		models[t].cplex = IloCplex(models[t].mod);
 
 		// set model algorithm
-		// models[t].cplex.setParam(IloCplex::RootAlg, IloCplex::Primal);
 		models[t].cplex.setParam(IloCplex::EpGap, 0.01);
+
+		// models[t].cplex.setParam(IloCplex::RootAlg, IloCplex::Primal);
 
 		// set model solve output
 		models[t].cplex.setOut(models[t].env.getNullStream());
@@ -383,19 +380,26 @@ void buildModel (model * models, formatData * fData_p)
 
 		// write model to lp file
 		char fileName[100];
-		sprintf(fileName, "model_%d.lp", t);
+		sprintf(fileName, "m%d.lp", t);
 		models[t].cplex.exportModel(fileName);
 
 	} // End of t-loop for model construction
-	return;
-} // End of function buildModel
+} // End of buildModel
 
-void getSamplePaths (forwardPath & samplePaths, formatData * fData_p)
+void getSamplePaths (forwardPath & samplePaths, formatData * fData_p) 
+	// const bool sampling)
 {
 	// cout << "Sampling forward paths from scenarios..." << endl;
 	IloEnv env = fData_p->dataEnv;
-	IloInt numPaths = fData_p->numFWsample;
 	IloInt numStage = fData_p->numStage;
+	IloInt numPaths = fData_p->numFWsample;
+
+	// IloInt numPaths = 1;
+	// if (sampling)
+		// numPaths = fData_p->numFWsample;
+	// else
+		// for ( int t = 0; t < numStage; ++t )
+			// numPaths *= numScen[t]
 	IloIntArray index = fData_p->uncertainData;
 
 	if ( index[0] )
@@ -465,11 +469,11 @@ void getSamplePaths (forwardPath & samplePaths, formatData * fData_p)
 		{
 			double pdf = 1.0/fData_p->numScen[t];
 			double U = genrand64_real1(); // generate a random number between 0 and 1
-			// cout << "pdf: " << pdf << endl;
-			// cout << "random number generated: " << U << endl;
-			// cout << int(U/pdf) << ",";
 			// cout << "scenario chosen: " << int(U/pdf) << endl;
 			int chosen = int(U/pdf);
+			// int chosen = p;
+			// if ( sampling )
+				// chosen = int(U/pdf);
 			if ( index[0] )
 				samplePaths.x[p].add(fData_p->xScen[t][chosen]);
 			if ( index[1] )
@@ -492,7 +496,7 @@ void getSamplePaths (forwardPath & samplePaths, formatData * fData_p)
 
 void forward (model * models, formatData * fData_p,
 	const forwardPath samplePaths, IloNumArray3 & candidateSol,
-	IloNumArray & ub_c, IloNumArray & ub_l, IloNumArray & ub_r)
+	IloNumArray & ub_c, IloNumArray & ub_l, IloNumArray & ub_r, const bool LP)
 {
 	cout << "Start the forward process..." << endl;
 
@@ -505,7 +509,7 @@ void forward (model * models, formatData * fData_p,
 
 	// create an array to record the objective function value for each sample path
 	IloNumArray sampleObj(fData_p->dataEnv, sampleSize);
-	for ( p = 0; p < sampleSize; ++p) sampleObj[p] = 0.0;
+	// for ( p = 0; p < sampleSize; ++p) sampleObj[p] = 0.0;
 
 	// Find candidate solutions for each sample path
 	for ( p = 0; p < sampleSize; ++p )
@@ -543,18 +547,16 @@ void forward (model * models, formatData * fData_p,
 				models[t].constr2.setBounds(candidateSol[p][t-1], candidateSol[p][t-1]);
 				if ( t == 1 )
 				{
-					for ( i = 0; i < models[t].constr2.getSize()/3*2; ++i )
+					for ( i = 0; i < models[t].constr2.getSize(); ++i )
 						models[t].constr2[i].setBounds(0.0, 0.0);
 				}
 
 				// char fileName[100];
 				// sprintf(fileName, "model_%d.lp", t);
 				// models[t].cplex.exportModel(fileName);
-				// cout << "x: " << samplePaths.x[p][t] << endl;
-				// cout << "B: " << samplePaths.B[p][t] << endl;
 			} // End of update problem models[t]
 
-			// solve the current MIP model
+			// solve the current MIP/LP
 			if ( models[t].cplex.solve() )
 			{
 				//get solution status
@@ -566,78 +568,94 @@ void forward (model * models, formatData * fData_p,
 					// record the solution
 					IloNumArray vals(fData_p->dataEnv);
 					models[t].cplex.getValues(vals, models[t].x);
-					for ( i = 0; i < vals.getSize(); ++i )
-						vals[i] = round(vals[i]);
-					cout << models[t].cplex.getObjValue() << endl;
+					
+					if ( LP )
+					{
+						for ( i = 0; i < vals.getSize(); ++i )
+						{
+							if (abs(vals[i]) < 2 * 1e-4)
+							{
+								// cout << k1 << ": " << vals[k1] << endl;
+								vals[i] = 0.0;
+								// cout << models[t].x[k1] << ": " << models[t].cplex.getValue(models[t].x[k1]) << endl; 
+							}
+						}
+					}
+					else
+					{
+						for ( i = 0; i < vals.getSize(); ++i )
+							vals[i] = round(vals[i]);
+					}
+					// cout << "stage objective: " << models[t].cplex.getObjValue() << endl;
 					// cout << vals << endl;
 					// cin.get();
 					candidateSol[p].add(vals);
 
 					// IloNumArray unit(fData_p->dataEnv, vals.getSize()/3);
-					int j, k;
-					int FC = 6;
-					int ODI = 12;
-					int numBin [2] = {6, 9};
-					int dim = vals.getSize();
-					IloNumArray2 T(fData_p->dataEnv, FC);
-					for ( i = 0; i < 6; ++i )
-					{
-						T[i] = IloNumArray(fData_p->dataEnv, dim/3/ODI);
-						if ( i < 2 )
-						{
-							for ( j = 0; j < numBin[0]; ++j )
-								T[i][i*numBin[0] + j] = pow(2,j);
-						}
-						else
-						{
-							for ( j = 0; j < numBin[1]; ++j )
-								T[i][2 * numBin[0] + (i-2)*numBin[1] + j] = pow(2,j);
-						}
-					}
+					// int j, k;
+					// int FC = 6;
+					// int ODI = 12;
+					// int numBin [2] = {6, 9};
+					// int dim = vals.getSize();
+					// IloNumArray2 T(fData_p->dataEnv, FC);
+					// for ( i = 0; i < 6; ++i )
+					// {
+					// 	T[i] = IloNumArray(fData_p->dataEnv, dim/3/ODI);
+					// 	if ( i < 2 )
+					// 	{
+					// 		for ( j = 0; j < numBin[0]; ++j )
+					// 			T[i][i*numBin[0] + j] = pow(2,j);
+					// 	}
+					// 	else
+					// 	{
+					// 		for ( j = 0; j < numBin[1]; ++j )
+					// 			T[i][2 * numBin[0] + (i-2)*numBin[1] + j] = pow(2,j);
+					// 	}
+					// }
 
-					// cout << T << endl;
-					// cin.get();
+					// // cout << T << endl;
+					// // cin.get();
 
-					for ( i = 0; i < ODI; ++i )
-					{
-						IloNumArray2 P(fData_p->dataEnv, FC);
-						IloNumArray2 B(fData_p->dataEnv, FC);
-						IloNumArray2 C(fData_p->dataEnv, FC);
+					// for ( i = 0; i < ODI; ++i )
+					// {
+					// 	IloNumArray2 P(fData_p->dataEnv, FC);
+					// 	IloNumArray2 B(fData_p->dataEnv, FC);
+					// 	IloNumArray2 C(fData_p->dataEnv, FC);
 
-						for ( j = 0; j < FC; ++j )
-						{
-							B[j] = IloNumArray(fData_p->dataEnv, dim/3/ODI);
-							C[j] = IloNumArray(fData_p->dataEnv, dim/3/ODI);
-							P[j] = IloNumArray(fData_p->dataEnv, dim/3/ODI);
+					// 	for ( j = 0; j < FC; ++j )
+					// 	{
+					// 		B[j] = IloNumArray(fData_p->dataEnv, dim/3/ODI);
+					// 		C[j] = IloNumArray(fData_p->dataEnv, dim/3/ODI);
+					// 		P[j] = IloNumArray(fData_p->dataEnv, dim/3/ODI);
 
-							if ( j < 2 )
-							{
-								for ( k = 0; k < numBin[0]; ++k )
-								{
-									B[j][j*numBin[0] + k] = vals[i*dim/3/ODI + j*numBin[0] + k];
-									C[j][j*numBin[0] + k] = vals[dim/3 + i*dim/3/ODI + j*numBin[0] + k];
-									P[j][j*numBin[0] + k] = vals[dim/3*2 + i*dim/3/ODI + j*numBin[0] + k];
-								}
-							}
-							else
-							{
-								for ( k = 0; k < numBin[1]; ++k )
-								{
-									B[j][j*numBin[0] + k] = vals[i*dim/3/ODI + 2*numBin[0] + (j-2)*numBin[1] + k];
-									C[j][j*numBin[0] + k] = vals[dim/3 + i*dim/3/ODI + 2*numBin[0] + (j-2)*numBin[1] + k];
-									P[j][j*numBin[0] + k] = vals[dim/3*2 + i*dim/3/ODI + 2*numBin[0] + (j-2)*numBin[1] + k];
-								}
-							}
+					// 		if ( j < 2 )
+					// 		{
+					// 			for ( k = 0; k < numBin[0]; ++k )
+					// 			{
+					// 				B[j][j*numBin[0] + k] = vals[i*dim/3/ODI + j*numBin[0] + k];
+					// 				C[j][j*numBin[0] + k] = vals[dim/3 + i*dim/3/ODI + j*numBin[0] + k];
+					// 				P[j][j*numBin[0] + k] = vals[dim/3*2 + i*dim/3/ODI + j*numBin[0] + k];
+					// 			}
+					// 		}
+					// 		else
+					// 		{
+					// 			for ( k = 0; k < numBin[1]; ++k )
+					// 			{
+					// 				B[j][j*numBin[0] + k] = vals[i*dim/3/ODI + 2*numBin[0] + (j-2)*numBin[1] + k];
+					// 				C[j][j*numBin[0] + k] = vals[dim/3 + i*dim/3/ODI + 2*numBin[0] + (j-2)*numBin[1] + k];
+					// 				P[j][j*numBin[0] + k] = vals[dim/3*2 + i*dim/3/ODI + 2*numBin[0] + (j-2)*numBin[1] + k];
+					// 			}
+					// 		}
 
-							// cout << "B" << i << "," << j << ": " << IloScalProd(T[j], B[j]) << " ||  ";
-							// cout << "C" << i << "," << j << ": " << IloScalProd(T[j], C[j]) << " ||  ";
-							// cout << "P" << i << "," << j << ": " << IloScalProd(T[j], P[j]) << endl;
-						}
-					}
+					// 		// cout << "B" << i << "," << j << ": " << IloScalProd(T[j], B[j]) << " ||  ";
+					// 		// cout << "C" << i << "," << j << ": " << IloScalProd(T[j], C[j]) << " ||  ";
+					// 		// cout << "P" << i << "," << j << ": " << IloScalProd(T[j], P[j]) << endl;
+					// 	}
+					// }
 
 					
-					IloNumArray val2(fData_p->dataEnv);
-					models[t].cplex.getValues(val2, models[t].y2);
+					// IloNumArray val2(fData_p->dataEnv);
+					// models[t].cplex.getValues(val2, models[t].y2);
 					// cout << val2 << endl;
 					// cin.get();
 					
@@ -662,8 +680,8 @@ void forward (model * models, formatData * fData_p,
 			{
 				cout << "Solution status is infeasible..." << endl;
 				cout << "Sample " << p << ", Stage " << t << endl;
-				models[t].cplex.exportModel("infeasible.lp");
-				throw ("Infeasible...");
+				models[t].cplex.exportModel("fw.lp");
+				throw ("FW infeasible...");
 			}
 
 		} // End of loop over stages
@@ -679,13 +697,6 @@ void forward (model * models, formatData * fData_p,
 	ub_c.add(center);
 	ub_l.add(center - halfLength);
 	ub_r.add(center + halfLength);
-	// cout << "objective value for forward sample paths: " << sampleObj << endl;
-	// cout << candidateSol << endl;
-	/*
-	cout << ub_l << endl;
-	cout << ub_c << endl;
-	cout << ub_r << endl;
-	*/
 	// cout << sampleObj << endl;
 	cout << "95\% CI for the upper bound: [ " << center - halfLength <<  ", " << center + halfLength << " ]." << endl;
 
@@ -693,8 +704,8 @@ void forward (model * models, formatData * fData_p,
 	sampleObj.end();
 } // End of forward pass to generate candidate solutions
 
-void backward (model * models, formatData * fData_p,
-	const IloNumArray3 candidateSol, IloNumArray & lb, bool cutFlag[4], const IloInt iter)
+void backward (model * models, formatData * fData_p, const IloNumArray3 candidateSol,
+	IloNumArray & lb, const bool cutFlag[4], bool LP, const IloInt iter)
 //	cutFlag = [bendersFlag, impvdBendersFlag, lagrangianFlag，integerFlag]
 {
 	cout << "================================" << endl;
@@ -708,41 +719,25 @@ void backward (model * models, formatData * fData_p,
 	IloIntArray index = fData_p->uncertainData;
 	IloAlgorithm::Status solStatus;
 
-	unordered_set<string> uniqueSet;
-	IntMatrix uniqueSol;
-
 	for ( t = fData_p->numStage - 1; t > 0; --t ) // for each stage
 	{
 		cout << "======================" << endl;
 		cout << "Current stage t =  " << t << endl;
 
-		// find out unique candidate solutions at current stage among candidateSol[p][t] for p = 1,..., numFWsample
-
-		// create a 2-d array to store candidateSol[p][t] for p = 1,..., numFWsample
-		for ( p = 0; p < sampleSize; ++p )
-			uniqueSet.insert(toString(candidateSol[p][t-1]));
-
-		// convert uniqueSet(unordered_set) to uniqueSol(2-d vector)
-		for ( auto it = uniqueSet.begin(); it != uniqueSet.end(); ++it )
-			uniqueSol.push_back(getDigit(*it));
-
-		int m = 0;
-		for ( auto it = uniqueSol.begin(); it != uniqueSol.end(); ++it )  // 
+		for ( p = 0; p < sampleSize; ++p )  // 
 		{
-			m += 1;
-			cout << "Evaluating candidate solution: " << m << endl;
+			cout << "Evaluating candidate solution: " << p << endl;
 			cout << "\e[A";
 			// cout << "Total number of scenarios at this stage: " << fData_p->numScen[t] << endl;
 			// create arrays to store MIP, Lagrangian with optimal LP dual, and LP optimal values
+			IloNumArray scenLPobj(fData_p->dataEnv);
 			IloNumArray scenMIPobj(fData_p->dataEnv);
 			IloNumArray scenMIPBestBound(fData_p->dataEnv);
 			IloNumArray scenLGOPTobj(fData_p->dataEnv);
 			IloNumArray scenLGobj(fData_p->dataEnv);
-			IloNumArray scenLPobj(fData_p->dataEnv);
 			IloNumArray dualVar(fData_p->dataEnv, dimX);
-			// IloNumArray LPdualAvg(fData_p->dataEnv, constr2Size);
-			vector<float> LPdualAvg (dimX, 0.0);
-			vector<float> LGdualAvg (dimX, 0.0);
+			IloNumArray LPdualAvg(fData_p->dataEnv, dimX);
+			IloNumArray LGdualAvg(fData_p->dataEnv, dimX);
 
 			for ( k = 0; k < fData_p->numScen[t]; ++k )  // for each scenario at stage t
 			{
@@ -768,23 +763,19 @@ void backward (model * models, formatData * fData_p,
 					models[t].constr1.setBounds(fData_p->bScen[t][k], fData_p->bScen[t][k]);
 
 				// update the state variables z_t = x_{t-1}
-				for ( i = 0; i < dimX; ++i )
-				{
-					// cout << (*it)[i];
-					models[t].constr2[i].setBounds( (*it)[i], (*it)[i] );
-				}
+				models[t].constr2.setBounds( candidateSol[p][t-1], candidateSol[p][t-1] );
 				if ( t == 1 )
 				{
-					for ( i = 0; i < models[t].constr2.getSize()/3*2; ++i )
+					for ( i = 0; i < models[t].constr2.getSize(); ++i )
 						models[t].constr2[i].setBounds(0.0, 0.0);
 				}
 
 				// char fileName[100];
-				// sprintf(fileName, "model_%d.lp", t);
+				// sprintf(fileName, "model_%d_%d_%d.lp", t, iter, k);
 				// models[t].cplex.exportModel(fileName);
-				// cin.get();
-
-				// solve nodal MIP, objective value can be used in integer cut or serve as an ub for LGobj
+				
+				// solve nodal MIP/LP
+				// If MIP, objective value can be used in integer cut or serve as an ub for LGobj
 				if ( models[t].cplex.solve() ) // feasible
 				{	
 					// get solution status
@@ -793,34 +784,135 @@ void backward (model * models, formatData * fData_p,
 					if ( solStatus == IloAlgorithm::Optimal )
 					{
 						// record objective function value
-						scenMIPobj.add(models[t].cplex.getObjValue());
-						scenMIPBestBound.add(models[t].cplex.getBestObjValue());
-						// cout << "mip objective value: " << models[t].cplex.getObjValue() << endl;
+						if ( LP )
+						{
+							scenLPobj.add(models[t].cplex.getObjValue());
+							models[t].cplex.getDuals(dualVar, models[t].constr2);
+							for (int k1 = 0; k1 < dualVar.getSize(); ++k1 )
+							{
+								if (abs(dualVar[k1]) < 2 * 1e-4)
+									dualVar[k1] = 0.0;
+							}
+							// cout << "dualVar: " << dualVar << endl;
+							for (i = 0; i < dimX; ++i)
+								LPdualAvg[i] += dualVar[i] / fData_p->numScen[t];
+						}
+						else
+						{
+							scenMIPobj.add(models[t].cplex.getObjValue()); // incumbent, upper bound
+							scenMIPBestBound.add(models[t].cplex.getBestObjValue()); // best lower bound
+							// cout << "mip objective value: " << models[t].cplex.getObjValue() << endl;
+							// models[t].cplex.exportModel("IP.lp");
+						}
+
+
+						// // record the solution
+						// IloNumArray vals(fData_p->dataEnv);
+						// models[t].cplex.getValues(vals, models[t].x);
+						// if ( ! LP )
+						// 	for ( i = 0; i < vals.getSize(); ++i )
+						// 		vals[i] = round(vals[i]);
+
+						// int j, m;
+						// int FC = 6;
+						// int ODI = 12;
+						// int numBin [2] = {6, 9};
+						// int dim = vals.getSize();
+						// IloNumArray2 T(fData_p->dataEnv, FC);
+						// for ( i = 0; i < 6; ++i )
+						// {
+						// 	T[i] = IloNumArray(fData_p->dataEnv, dim/2/ODI);
+						// 	if ( i < 2 )
+						// 	{
+						// 		for ( j = 0; j < numBin[0]; ++j )
+						// 			T[i][i*numBin[0] + j] = pow(2,j);
+						// 	}
+						// 	else
+						// 	{
+						// 		for ( j = 0; j < numBin[1]; ++j )
+						// 			T[i][2 * numBin[0] + (i-2)*numBin[1] + j] = pow(2,j);
+						// 	}
+						// }
+
+						// // cout << T << endl;
+						// // cin.get();
+
+						// for ( i = 0; i < ODI; ++i )
+						// {
+						// 	// IloNumArray2 P(fData_p->dataEnv, FC);
+						// 	IloNumArray2 B(fData_p->dataEnv, FC);
+						// 	IloNumArray2 C(fData_p->dataEnv, FC);
+
+						// 	for ( j = 0; j < FC; ++j )
+						// 	{
+						// 		B[j] = IloNumArray(fData_p->dataEnv, dim/2/ODI);
+						// 		C[j] = IloNumArray(fData_p->dataEnv, dim/2/ODI);
+						// 		if ( j < 2 )
+						// 		{
+						// 			for ( m = 0; m < numBin[0]; ++m )
+						// 			{
+						// 				// cout << dim/2 << " || " << i*dim/2/ODI + j*numBin[0] + m << endl;
+						// 				B[j][j*numBin[0] + m] = vals[        i*dim/2/ODI + j*numBin[0] + m];
+						// 				C[j][j*numBin[0] + m] = vals[dim/2 + i*dim/2/ODI + j*numBin[0] + m];
+						// 			}
+						// 		}
+						// 		else
+						// 		{
+						// 			for ( m = 0; m < numBin[1]; ++m )
+						// 			{
+						// 				// cout << dim/2 << " || " << i*dim/2/ODI + 2*numBin[0] + (j-2)*numBin[1] + m << endl;
+						// 				B[j][2*numBin[0] + (j-2)*numBin[1] + m] = vals[        i*dim/2/ODI + 2*numBin[0] + (j-2)*numBin[1] + m];
+						// 				C[j][2*numBin[0] + (j-2)*numBin[1] + m] = vals[dim/2 + i*dim/2/ODI + 2*numBin[0] + (j-2)*numBin[1] + m];
+						// 			}
+						// 		}
+
+						// 		if ( IloScalProd(T[j], B[j]) < IloScalProd(T[j], C[j]) )
+						// 		{
+						// 			cout << "B" << i << "," << j << ": " << IloScalProd(T[j], B[j]) << " ||  ";
+						// 			cout << "C" << i << "," << j << ": " << IloScalProd(T[j], C[j]) << endl;
+						// 			cout << T[j] << endl;
+						// 			cout << B[j] << endl;
+						// 			cout << C[j] << endl;
+						// 		}
+						// 	}
+						// 	B.end();
+						// 	C.end();
+						// }
+						// // cin.get();
+
+
+
+
 					}
 					else // not optimal
 					{
 						cout << "Solution status: " << solStatus << endl;
-						throw ("MIP not optimal...");
+						throw ("Stage MIP/LP not optimal...");
 					}
 				}
 				else // infeasible
 				{
 					cout << "Solution status: " << models[t].cplex.getStatus() << endl;
-					throw ("MIP has no solution...");
+					models[t].cplex.exportModel("bw.lp");
+					cout << models[t].cplex.isDualFeasible() << endl;
+					cout << models[t].cplex.isPrimalFeasible() << endl;
+					throw ("Stage MIP/LP has no solution...");
 				}
 
-				if ( cutFlag[0] + cutFlag[1] + cutFlag[2] ) // Benders + ImprovedBenders + Lagrangian
+				if ( (! LP) && ( cutFlag[0] + cutFlag[1] + cutFlag[2] ) ) // Benders + ImprovedBenders + Lagrangian
 				{
 					// solve models[t] LP relaxation
 					IloConversion relaxVarX(models[t].env, models[t].x, ILOFLOAT);
 					IloConversion relaxVarY(models[t].env, models[t].y1, ILOFLOAT);
 					models[t].mod.add(relaxVarX);
 					models[t].mod.add(relaxVarY);
+					// cout << "Relaxation added." << endl;
 					
-					if ( models[t].cplex.solve() ) // feasible
+					if ( models[t].cplex.solve() ) // LP relaxation feasible
 					{
 						// get solution status
 						solStatus = models[t].cplex.getStatus();
+						// cout << "LP relaxation: " << solStatus << endl;
 
 						if ( solStatus == IloAlgorithm::Optimal )
 						{
@@ -828,17 +920,19 @@ void backward (model * models, formatData * fData_p,
 							scenLPobj.add(models[t].cplex.getObjValue());
 							// record optimal dual variables
 							models[t].cplex.getDuals(dualVar, models[t].constr2);
-							// cout << dualVar << endl;
+							for ( i = 0; i < dualVar.getSize(); ++i )
+							{
+								if (abs(dualVar[i]) < 2 * 1e-4)
+									dualVar[i] = 0.0;
+							}
+							// cout << "dualVar: " << dualVar << endl;
+							// cout << models[t].constr2 << endl;
 							for (i = 0; i < dimX; ++i)
 								LPdualAvg[i] += dualVar[i] / fData_p->numScen[t];
 							
-							// cout << "dualVar: " << dualVar << endl;
 							// change model back to MIP
 							relaxVarX.end();
 							relaxVarY.end();
-
-							// cout << "below " << endl;
-							// cin.get();
 
 							// continue to solve Lagrangian if needed
 							if ( cutFlag[1] + cutFlag[2] ) // ImprovedBenders + Lagrangian
@@ -863,6 +957,11 @@ void backward (model * models, formatData * fData_p,
 								modelLGD.obj = IloMinimize(modelLGD.env);
 								IloExpr expr = models[t].obj.getExpr();
 								expr -= IloScalProd(dualVar, models[t].z);
+								
+								// int k1 = dualVar.getSize();
+								// for ( int k2 = k1/3*2; k2 < k1; ++k2 )
+								// 	expr -= dualVar[k2] * models[t].z[k2];
+								
 								modelLGD.obj.setExpr(expr);
 								modelLGD.mod.add(modelLGD.obj);
 
@@ -874,20 +973,17 @@ void backward (model * models, formatData * fData_p,
 								modelLGD.cplex.setOut(modelLGD.env.getNullStream());
 
 								// solve IP to get improved Benders' cut
-								if ( cutFlag[1] )
-								{
-									if ( modelLGD.cplex.solve() )
+								if ( cutFlag[1] && modelLGD.cplex.solve() )
 										scenLGobj.add(modelLGD.cplex.getBestObjValue());
-								}
 								
-								// update lagrangian dualVar for a few iterations
+								// update lagrangian multipliers
 								if ( cutFlag[2] )
 								{
-									double val = LGsolve(modelLGD, dualVar, models[t].z, *it, scenMIPobj[k]);
+									double val = LGsolve(modelLGD, dualVar, models[t].z, candidateSol[p][t], scenMIPobj[k]);
 									scenLGOPTobj.add(val);
 									for (i = 0; i < dimX; ++i)
 										LGdualAvg[i] += dualVar[i] / fData_p->numScen[t];
-									cout << "LG solve finished" << endl;
+									cout << "Lagrangian dual solved." << endl;
 									// cout << "IP solution " << scenMIPobj << endl;
 									// cout << "LGD solution " << scenLGOPTobj << endl;
 									cout << "========================" << endl;
@@ -906,37 +1002,67 @@ void backward (model * models, formatData * fData_p,
 							throw ("LP not optimal...");
 						}
 					}
-					else // infeasible
+					else // infeasible / unbounded
 					{
 						cout << "Solution status: " << models[t].cplex.getStatus() << endl;
+						models[t].cplex.exportModel("LP.lp");
 						throw ("LP has no solution...");
 					}
 			
 				}
 			} // End of loop over all scenarios in stage t
+			// cin.get();
 
 			// construct and add different types of cuts
 			if ( cutFlag[0] + cutFlag[1] ) // Benders + ImprovedBenders
 			{
 				IloExpr expr(models[t-1].env);
 				expr = models[t-1].theta;
-				for ( i = 0; i < dimX; ++i )
-					expr -= LPdualAvg[i] * models[t-1].x[i];
-				if ( cutFlag[1] )
+				
+				// int k1 = LPdualAvg.getSize();
+				// for ( int k2 = k1/3*2; k2 < k1; ++k2 )
+				// 	expr -= LPdualAvg[k2] * models[t-1].x[k2];
+				
+				if ( t > 1)
+					expr -= IloScalProd(LPdualAvg, models[t-1].x);
+				// cout << expr << endl;
+				// cout << LPdualAvg << endl;
+				if ( cutFlag[0] )
 				{
+					// cout << "test" << t << p << k << endl;
+					// cout << LPdualAvg.getSize() << candidateSol[p][t].getSize() << endl;		
+					// cout << IloScalProd(LPdualAvg, candidateSol[p][t]) << endl;
+					// cout << IloSum(scenLPobj) / fData_p->numScen[t] << endl;
+					
+					// int k3 = 0;
+					// for ( int k2 = k1/3*2; k2 < k1; ++k2 )
+					// 	k3 += LPdualAvg[k2] * candidateSol[p][t-1][k2];
+					// rhs = IloSum(scenLPobj) / fData_p->numScen[t] - k3;
+					
+					if ( t == 1 )
+					{
+						rhs = IloSum(scenLPobj) / fData_p->numScen[t];
+						// cout << scenLPobj << endl;
+					}
+					else
+						rhs = IloSum(scenLPobj) / fData_p->numScen[t] - IloScalProd(LPdualAvg, candidateSol[p][t-1]);
+					
+					// cout << rhs << endl;
+					// cout << "Benders, " ;
+				}
+				else
+				{	
+					// int k3 = 0;
+					// for ( int k2 = 0; k2 < k1/3*2; ++k2 )
+					// 	k3 += LPdualAvg[k2] * candidateSol[p][t-1][k2];
+					// rhs = IloSum(scenLGobj) / fData_p->numScen[t] + k3;
 					rhs = IloSum(scenLGobj) / fData_p->numScen[t];
 					// cout << "Improved Benders', ";
 				}
-				else
-				{
-					rhs = IloSum(scenLPobj) / fData_p->numScen[t] - inner_product(LPdualAvg.begin(), LPdualAvg.end(), (*it).begin(), 0);
-					// cout << "Benders', ";
-				}
-				// IloRange newcut(models[t-1].env, rhs, expr);
-				// cout << checkCut(models[t-1].cuts, newcut) << endl;
-				// cin.get();
 				models[t-1].cuts.add(expr >= rhs);
 				models[t-1].mod.add(expr >= rhs);
+				// cout << expr << endl;
+				// cout << rhs << endl;
 				expr.end();
 			}
 
@@ -944,8 +1070,7 @@ void backward (model * models, formatData * fData_p,
 			{
 				IloExpr expr(models[t-1].env);
 				expr = models[t-1].theta;
-				for ( i = 0; i < dimX; ++i )
-					expr -= LGdualAvg[i] * models[t-1].x[i];
+				expr -= IloScalProd(LGdualAvg, models[t-1].x);
 				rhs = IloSum(scenLGOPTobj) / fData_p->numScen[t];
 				models[t-1].cuts.add(expr >= rhs);
 				models[t-1].mod.add(expr >= rhs);
@@ -958,17 +1083,24 @@ void backward (model * models, formatData * fData_p,
 			{
 				IloExpr expr(models[t-1].env);
 				expr = models[t-1].theta;
-				IloNum mipObjAve = IloSum(scenMIPBestBound) / fData_p->numScen[t];
-				for ( unsigned j = 0; j < dimX; ++j )
-				{
-					if ( abs( (*it)[j]) < EPSILON )
-						expr += (mipObjAve - fData_p->thetaLB[t-1]) * models[t-1].x[j];
-					else
-						expr -= (mipObjAve - fData_p->thetaLB[t-1]) * models[t-1].x[j];
+				IloNum mipObjAvg = IloSum(scenMIPBestBound) / fData_p->numScen[t];
+				if ( t > 1 )
+				{	
+					for ( int j = 0; j < dimX; ++j )
+					{
+						if ( abs( candidateSol[p][t][j] ) < EPSILON )
+							expr += (mipObjAvg - fData_p->thetaLB[t-1]) * models[t-1].x[j];
+						else
+							expr -= (mipObjAvg - fData_p->thetaLB[t-1]) * models[t-1].x[j];
+					}
+					rhs = fData_p->thetaLB[t-1] - (mipObjAvg - fData_p->thetaLB[t-1]) * (IloSum(candidateSol[p][t]) -1);
 				}
-				rhs = fData_p->thetaLB[t-1] - (mipObjAve - fData_p->thetaLB[t-1]) * (accumulate( (*it).begin(), (*it).end(), 0) -1);
+				else
+					rhs = mipObjAvg;
+
 				models[t-1].cuts.add(expr >= rhs);
 				models[t-1].mod.add(expr >= rhs);
+				// cout << expr << ">= " << rhs << endl;
 				// cout << "Integer L-shaped, ";
 				expr.end();
 			}
@@ -976,28 +1108,26 @@ void backward (model * models, formatData * fData_p,
 			// cout << "cuts are added." << endl;
 
 			// free momery
-			scenMIPobj.end();
-			if ( cutFlag[1] + cutFlag[2] + cutFlag[3] )
+			scenLPobj.end();
+			dualVar.end();
+			LPdualAvg.end();
+			if ( ! LP )
 			{
-				scenLPobj.end();
-				scenLGobj.end();
+				scenMIPobj.end();
+				scenMIPBestBound.end();
 				scenLGOPTobj.end();
-				dualVar.end();
-				LPdualAvg.clear();
-				LGdualAvg.clear();
+				scenLGobj.end();
+				LPdualAvg.end();
 			}
-
 		} // End of loop over unique candidate solutions
-
-		uniqueSet.clear();
-		uniqueSol.clear();
-
+		// cin.get();
+		// cout << models[t-1].cuts << endl;
 	} // End of loop over stages
 
 	cout << "================================" << endl;
 	cout << "Solving the master problem: " << endl;
 
-	// solve models[0] as a MIP
+	// solve models[0] as a MIP/LP
 	if ( models[0].cplex.solve() ) // feasible
 	{
 		// get solution status
@@ -1007,81 +1137,82 @@ void backward (model * models, formatData * fData_p,
 		if ( solStatus == IloAlgorithm::Optimal )
 		{
 			// update lower bound lb as the optimal objective function value
-			lb.add(models[0].cplex.getBestObjValue());
+			if ( LP )
+				lb.add(models[0].cplex.getObjValue());
+			else
+				lb.add(models[0].cplex.getBestObjValue());
+			
 			// char fileName[100];
+			// cout << t << endl;
 			// sprintf(fileName, "model_%d_%d.lp", t, iter);
 			// models[t].cplex.exportModel(fileName);
 
 			// record the solution
 			IloNumArray vals(fData_p->dataEnv);
 			models[0].cplex.getValues(vals, models[0].x);
-			for ( i = 0; i < vals.getSize(); ++i )
-				vals[i] = round(vals[i]);
-			cout << models[0].cplex.getObjValue() << endl;
+			if ( ! LP )
+				for ( i = 0; i < vals.getSize(); ++i )
+					vals[i] = round(vals[i]);
+			cout << "master objective: " << models[0].cplex.getObjValue() << endl;
 			// cout << vals << endl;
 			// cin.get();
 
-			int j, k;
-			int FC = 6;
-			int ODI = 12;
-			int numBin [2] = {6, 9};
-			int dim = vals.getSize();
-			IloNumArray2 T(fData_p->dataEnv, FC);
-			for ( i = 0; i < 6; ++i )
-			{
-				T[i] = IloNumArray(fData_p->dataEnv, dim/3/ODI);
-				if ( i < 2 )
-				{
-					for ( j = 0; j < numBin[0]; ++j )
-						T[i][i*numBin[0] + j] = pow(2,j);
-				}
-				else
-				{
-					for ( j = 0; j < numBin[1]; ++j )
-						T[i][2 * numBin[0] + (i-2)*numBin[1] + j] = pow(2,j);
-				}
-			}
+			// int j, k;
+			// int FC = 6;
+			// int ODI = 12;
+			// int numBin [2] = {6, 9};
+			// int dim = vals.getSize();
+			// IloNumArray2 T(fData_p->dataEnv, FC);
+			// for ( i = 0; i < 6; ++i )
+			// {
+			// 	T[i] = IloNumArray(fData_p->dataEnv, dim/2/ODI);
+			// 	if ( i < 2 )
+			// 	{
+			// 		for ( j = 0; j < numBin[0]; ++j )
+			// 			T[i][i*numBin[0] + j] = pow(2,j);
+			// 	}
+			// 	else
+			// 	{
+			// 		for ( j = 0; j < numBin[1]; ++j )
+			// 			T[i][2 * numBin[0] + (i-2)*numBin[1] + j] = pow(2,j);
+			// 	}
+			// }
 
 			// cout << T << endl;
-			// cin.get();
+			// // cin.get();
 
-			for ( i = 0; i < ODI; ++i )
-			{
-				IloNumArray2 P(fData_p->dataEnv, FC);
-				IloNumArray2 B(fData_p->dataEnv, FC);
-				IloNumArray2 C(fData_p->dataEnv, FC);
+			// for ( i = 0; i < ODI; ++i )
+			// {
+			// 	// IloNumArray2 P(fData_p->dataEnv, FC);
+			// 	IloNumArray2 B(fData_p->dataEnv, FC);
+			// 	IloNumArray2 C(fData_p->dataEnv, FC);
 
-				for ( j = 0; j < FC; ++j )
-				{
-					B[j] = IloNumArray(fData_p->dataEnv, dim/3/ODI);
-					C[j] = IloNumArray(fData_p->dataEnv, dim/3/ODI);
-					P[j] = IloNumArray(fData_p->dataEnv, dim/3/ODI);
+			// 	for ( j = 0; j < FC; ++j )
+			// 	{
+			// 		B[j] = IloNumArray(fData_p->dataEnv, dim/2/ODI);
+			// 		C[j] = IloNumArray(fData_p->dataEnv, dim/2/ODI);
+			// 		if ( j < 2 )
+			// 		{
+			// 			for ( k = 0; k < numBin[0]; ++k )
+			// 			{
+			// 				B[j][j*numBin[0] + k] = vals[i*dim/2/ODI + j*numBin[0] + k];
+			// 				C[j][j*numBin[0] + k] = vals[dim/2 + i*dim/2/ODI + j*numBin[0] + k];
+			// 			}
+			// 		}
+			// 		else
+			// 		{
+			// 			for ( k = 0; k < numBin[1]; ++k )
+			// 			{
+			// 				B[j][j*numBin[0] + k] = vals[i*dim/2/ODI + 2*numBin[0] + (j-2)*numBin[1] + k];
+			// 				C[j][j*numBin[0] + k] = vals[dim/2 + i*dim/2/ODI + 2*numBin[0] + (j-2)*numBin[1] + k];
+			// 			}
+			// 		}
 
-					if ( j < 2 )
-					{
-						for ( k = 0; k < numBin[0]; ++k )
-						{
-							B[j][j*numBin[0] + k] = vals[i*dim/3/ODI + j*numBin[0] + k];
-							C[j][j*numBin[0] + k] = vals[dim/3 + i*dim/3/ODI + j*numBin[0] + k];
-							P[j][j*numBin[0] + k] = vals[dim/3*2 + i*dim/3/ODI + j*numBin[0] + k];
-						}
-					}
-					else
-					{
-						for ( k = 0; k < numBin[1]; ++k )
-						{
-							B[j][j*numBin[0] + k] = vals[i*dim/3/ODI + 2*numBin[0] + (j-2)*numBin[1] + k];
-							C[j][j*numBin[0] + k] = vals[dim/3 + i*dim/3/ODI + 2*numBin[0] + (j-2)*numBin[1] + k];
-							P[j][j*numBin[0] + k] = vals[dim/3*2 + i*dim/3/ODI + 2*numBin[0] + (j-2)*numBin[1] + k];
-						}
-					}
-
-					cout << "B" << i << "," << j << ": " << IloScalProd(T[j], B[j]) << " ||  ";
-					cout << "C" << i << "," << j << ": " << IloScalProd(T[j], C[j]) << " ||  ";
-					cout << "P" << i << "," << j << ": " << IloScalProd(T[j], P[j]) << endl;
-				}
-			}
-			// cin.get();
+			// 		cout << "B" << i << "," << j << ": " << IloScalProd(T[j], B[j]) << " ||  ";
+			// 		cout << "C" << i << "," << j << ": " << IloScalProd(T[j], C[j]) << endl;
+			// 	}
+			// }
+			// // cin.get();
 		}
 		else // not optimal
 		{
@@ -1092,12 +1223,13 @@ void backward (model * models, formatData * fData_p,
 	else // infeasible
 	{
 		cout << "First stage problem status: " << models[0].cplex.getStatus() << endl;
+		models[0].cplex.exportModel("root.lp");
 		throw ("Relaxed first-stage problem infeasible...");
 	}
-} // End of backward pass to refine value functions
+} //
 
-double LGsolve (model & LGmodel, IloNumArray & dualVar, IloNumVarArray z,
-	const vector<int> state, const double ub )
+
+double LGsolve (model & LGmodel, IloNumArray & dualVar, IloNumVarArray z, const IloNumArray state, const double ub )
 {
 	int dimZ = dualVar.getSize();
 	int i, j;
@@ -1106,17 +1238,16 @@ double LGsolve (model & LGmodel, IloNumArray & dualVar, IloNumVarArray z,
 	bool optimalFlag = 0;
 	IloNumArray gradient(LGmodel.env, dimZ);
 
-	for ( i = 0; i < numIter; ++i)
+	for ( i = 0; i < numIter; ++i )
 	{
 		LGmodel.cplex.solve();
 		objVal = LGmodel.cplex.getObjValue();
-		double temp = 0;
-		for ( j = 0; j < dimZ; ++j )
-			temp += dualVar[j]*state[j];
+		double constant = IloScalProd(dualVar, state);
 		// cout << objVal + temp << endl;
 		// cout << ub;
-		gap = abs((ub - objVal - temp) / ub);
-		cout << "Current gap: " << gap << "   Absolute difference: " << ub - objVal - temp << endl;
+		double diff = ub - objVal - constant;
+		gap = abs(diff / ub);
+		cout << "Current gap: " << gap << " || Absolute difference: " << diff << endl;
 		// optimality check
 		if ( gap < 1e-4 )
 		{
@@ -1127,16 +1258,14 @@ double LGsolve (model & LGmodel, IloNumArray & dualVar, IloNumVarArray z,
 		else if ( i < numIter - 1 )
 		{
 			cout << "\e[A";
-			normGrad = 0.0;
 			stepSize = 1.0 / sqrt(i+1);
 		
 			// obtain and revise gradient
 			LGmodel.cplex.getValues(gradient, z);
 			for ( j = 0; j < dimZ; ++j)
-			{
 				gradient[j] -= state[j];
-				normGrad += gradient[j] * gradient[j];
-			}
+			normGrad = IloScalProd(gradient, gradient);
+
 			// update dualVar and objective function
 			for ( j = 0; j < dimZ; ++j )
 			{
@@ -1192,14 +1321,18 @@ double std_dev ( vector<float> & v )
 
 void usage (char *progname)
 {
-	cerr << "Usage:  " << progname << " arg1 arg2 arg3 [arg4]" << endl;
+	cerr << "Usage:  " << progname << " arg1 arg2 arg3 arg4 arg5 [arg6]" << endl;
 	cerr << "At least two parameters must be specified." << endl;
 	cerr << "arg1: 0 -- turn off Benders' cuts;" << endl;
 	cerr << "      1 -- turn on Benders' cuts." << endl;
-	cerr << "arg2: 0 -- turn off Improved Benders' cuts;" << endl;
-	cerr << "      1 -- turn on Improved Benders' cuts." << endl;
+	cerr << "arg2: 0 -- turn off Strengthened Benders' cuts;" << endl;
+	cerr << "      1 -- turn on Strengthened Benders' cuts." << endl;
 	cerr << "arg3: 0 -- turn off Lagrangian cuts;" << endl;
 	cerr << "      1 -- turn on Lagrangian cuts." << endl;
-	cerr << "arg4: [optional] used as the seed of the random number generator." << endl;
+	cerr << "arg4: 0 -- turn off L-shaped cuts;" << endl;
+	cerr << "      1 -- turn on L-shaped cuts." << endl;
+	cerr << "arg5: 0 -- solve the integer problem;" << endl;
+	cerr << "      1 -- solve the LP-relaxation." << endl;
+	cerr << "arg6: [optional] used as the seed of the random number generator." << endl;
 	cerr << "      If not provided, system will generate one automatically." << endl;
 } // END usage

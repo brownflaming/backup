@@ -35,5 +35,5 @@ all: tree
 tree: $(OBJ_FILE)
 	$(CCC) $(CCFLAGS) $(OBJ_FILE) -o $(OUT_RELEASE) $(CCLNFLAGS)
 
-$(OBJ_DIR)/tree.o: tree.cpp
+$(OBJ_DIR)/tree.o: tree2.cpp
 	$(CCC) -c $(CCFLAGS) tree.cpp -o $(OBJ_DIR)/tree.o

@@ -21,7 +21,7 @@ int main (int argc, char *argv[])
 {
 	try 
 	{
-		if ( argc != 5 && argc != 6 )
+		if ( argc != 6 && argc != 7 )
 		{
 			usage (argv[0]);
 			throw (-1);
@@ -32,12 +32,20 @@ int main (int argc, char *argv[])
 		cutFlag[1] = atoi(argv[2]);  // Improved Benders' cut
 		cutFlag[2] = atoi(argv[3]);  // Lagrangian cut
 		cutFlag[3] = atoi(argv[4]);  // L-shaped cut
+
+		bool LP = atoi(argv[5]);
+		if ( LP && (cutFlag[1] + cutFlag[2] + cutFlag[3]) )
+		{
+			cerr << "Only Benders' cut can be used in LP relaxation." << endl;
+			throw (-1);
+		}
+
 		//if ( impvdBendersFlag + lagrangianFlag )
 		// 	integerFlag = 0;
 
 		unsigned long long seed;
-		if ( argc == 6 )
-			seed = atoi(argv[5]);
+		if ( argc == 7 )
+			seed = atoi(argv[6]);
 		else
 			seed = chrono::system_clock::now().time_since_epoch().count();
 		init_genrand64(seed);
@@ -46,25 +54,6 @@ int main (int argc, char *argv[])
 		formatData fData;
 		formatData * fData_p = & fData;
 		readData (fData_p);
-
-		
-		// IloNumArray4 x = IloNumArray4(fData.dataEnv, 4);
-		// for ( int i = 0; i < 4; ++i )
-		// {
-		// 	x[i] = IloNumArray3(fData.dataEnv, 3);
-		// 	for (int j = 0; j < 3; ++j )
-		// 	{
-		// 		x[i][j] = IloNumArray2(fData.dataEnv, 5);
-		// 		for (int k = 0; k < 5; ++k)
-		// 			x[i][j][k] = IloNumArray(fData.dataEnv, 10);
-		// 	}
-
-		// }
-		// cout << x[2][2][1][6] * 5 + 3 << endl;
-		// cout << "????????" << endl;
-		// cout << x << endl;
-		// cin.get();
-
 		cout << "All data has been read into fData." << endl;
 		cout << "==================================================" << endl;
 		cout << "total number of stages: " << fData.numStage << endl;
@@ -75,7 +64,7 @@ int main (int argc, char *argv[])
 
 		// construct models from fData
 		model * models = new model[fData.numStage];
-		buildModel(models, fData_p);
+		buildModel(models, fData_p, LP);
 		cout << "Model construction completed." << endl;
 		cout << "==================================================" << endl;
 
@@ -109,7 +98,7 @@ int main (int argc, char *argv[])
 			getSamplePaths(samplePaths, fData_p);
 			cout << "Forward sample paths obtained." << endl;	
 			cout << "================================" << endl;
-			forward(models, fData_p, samplePaths, candidateSol, ub_c, ub_l, ub_r);
+			forward(models, fData_p, samplePaths, candidateSol, ub_c, ub_l, ub_r, LP);
 			cout << "Forward pass completed." << endl;
 			cout << "================================" << endl;
 			// cout << candidateSol << endl;
@@ -127,44 +116,46 @@ int main (int argc, char *argv[])
 			cout << "L-shaped cuts: " << integerFlag << endl;
 			*/
 
-			backward(models, fData_p, candidateSol, lb, cutFlag, iteration);
+			backward(models, fData_p, candidateSol, lb, cutFlag, LP, iteration);
 			cout << "Backward pass completed." << endl;
 			cout << "================================" << endl;
 
 			cout << "lb: "   << lb   << endl;
-			cout << "ub_c: " << ub_c << endl;
-			cout << "ub_r: " << ub_r << endl;
+			// cout << "ub_c: " << ub_c << endl;
+			// cout << "ub_r: " << ub_r << endl;
 			cout << "number of iterations finished: " << iteration << endl;
 
 			candidateSol.clear();
 			samplePaths = {};
+
+			// cin.get();
 
 
 			/* Stopping criteria heuristic
 			    After a certain number of iterations, if lower bound starts to stablize,
 				i.e., variance of the last five lower bounds is small enough
 			*/
-			
-			// if ( iteration >= 4 )
-			// {
-			// 	vector<float> recentLB;
-			// 	for ( int i = 1; i < 3; ++i )
-			// 		recentLB.push_back(lb[iteration-i]);
+			if ( iteration >= 50 )
+			{
+				vector<float> recentLB;
+				for ( int i = 1; i < 10; ++i )
+					recentLB.push_back(lb[iteration-i]);
 
-			// 	double stdReLB = std_dev(recentLB);
-			// 	if ( stdReLB < TOLOPT )
-			// 	{
-			// 		if ( fData.numFWsample == 50 )
-			// 		{
-			// 			cout << "Lower bound has stablized." << endl;
-			// 			// break;
-			// 		}
-			// 		else
-			// 			fData.numFWsample = 50;			
-			// 	}
-			// 	else
-			// 		fData.numFWsample = initSampleSize;
-			// }
+				double stdReLB = std_dev(recentLB);
+				if ( stdReLB < TOLOPT )
+				{
+					if ( fData.numFWsample == 50 )
+					{
+						cout << "Lower bound has stablized." << endl;
+						break;
+					}
+					else
+						fData.numFWsample = 50;			
+				}
+				else
+					fData.numFWsample = initSampleSize;
+			}
+			
 			
 			end = chrono::system_clock::now();
 			elapsed_seconds = end - start;
@@ -172,16 +163,23 @@ int main (int argc, char *argv[])
 
 		} while ( (iteration < MAXITER) && (runtime < 18000) );
 
+		char fileName[100];
+		for ( int t = 0; t < fData.numStage; ++t )
+		{
+			sprintf(fileName, "M_%d.lp", t);
+			models[t].cplex.exportModel(fileName);
+		}
+
 		fData.numFWsample = 1000;
 		getSamplePaths(samplePaths, fData_p);
-		forward(models, fData_p, samplePaths, candidateSol, ub_c, ub_l, ub_r);
+		forward(models, fData_p, samplePaths, candidateSol, ub_c, ub_l, ub_r, LP);
 
 		end = chrono::system_clock::now();
 		elapsed_seconds = end - start;
 		runtime = elapsed_seconds.count();
 		printf("Total running time %.2f seconds.\n", runtime);
 
-		ofstream output ("0305.txt", ios::out | ios::app);
+		ofstream output ("0330.txt", ios::out | ios::app);
 		if ( output.is_open() )
 		{
 			output << "==================================================" << endl;
@@ -200,7 +198,7 @@ int main (int argc, char *argv[])
 			output << "right 95\% CI for the upper bound: " << ub_r << endl;
 		}
 
-		ofstream table ("0305.csv", ios::out | ios::app);
+		ofstream table ("0330.csv", ios::out | ios::app);
 		if ( table.is_open() )
 		{
 			table << fData.numStage << ", " <<

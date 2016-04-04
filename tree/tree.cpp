@@ -4,177 +4,410 @@
 ILOSTLBEGIN
 
 typedef IloArray<IloNumVarArray> IloNumVarArray2;
+typedef IloArray<IloNumVarArray2> IloNumVarArray3;
+typedef IloArray<IloNumVarArray> IloNumVarArray2;
+typedef IloArray<IloNumVarArray2> IloNumVarArray3;
 typedef IloArray<IloNumArray2> IloNumArray3;
-typedef IloArray<IloIntVarArray> IloIntVarArray2;
+typedef IloArray<IloNumArray3> IloNumArray4;
 
 
 template <class T>
 inline void readArray (T & target, const char * fileName)
 {
-	ifstream data(fileName);
-	if ( !data ) throw(-1);
-	data >> target;
-	data.close();
+	ifstream input(fileName);
+	if ( !input ) throw(-1);
+	input >> target;
+	input.close();
 }
 
-int main ()
+int main (int argc, char *argv[])
 {
-
-	// construct saa problem
+	// construct tree problem
 	IloEnv env;
-	try 
+	try
 	{
-		// load data //
-		cout << "Reading data from files..." << endl;
-		IloInt numStage, numStock, numChi;
-		IloNumArray assetLimit(env);
-		IloNumArray buyTran(env);
-		IloNumArray sellTran(env);
-		IloNumArray initState(env);
-		readArray<IloInt> (numStage, "data/numStage.dat");
-		readArray<IloInt> (numStock, "data/numStock.dat");
-		readArray<IloInt> (numChi, "data/numChi.dat");
-		readArray<IloNumArray> (buyTran, "data/buyTran.dat");
-		readArray<IloNumArray> (sellTran, "data/sellTran.dat");
-		readArray<IloNumArray> (initState, "data/initState.dat");
-		readArray<IloNumArray> (assetLimit, "data/assetLimit.dat");
+		int LP = atoi(argv[1]);
 
-		IloNumArray3 scenario(env); //[numStage][numChi][numStock]
-		readArray<IloNumArray3> (scenario, "data/scenario.dat");
+		IloInt numStage;
+		IloInt numBranch;
+		readArray<IloInt> (numStage, "data/stage.dat");
+		readArray<IloInt> (numBranch, "data/branch.dat");
+		cout << "test" << endl;
+		IloInt ODI = 12;
+		IloInt CLASS = 6;
+		IloInt numNode = (pow(numBranch, numStage) - 1)/(numBranch - 1);
 
-		cout << "All data loaded. Constructing model..." << endl;
+		IloNumArray PRICE1 = IloNumArray(env, 6, 500.0, 340.0, 200.0, 160.0, 130.0, 100.0);
+		IloNumArray PRICE2 = IloNumArray(env, 6, 800.0, 540.0, 320.0, 260.0, 210.0, 160.0);
+		IloNumArray CLNRATE = IloNumArray(env, 6, 0.1, 0.1, 0.05, 0.05, 0.0, 0.0);
+		IloNumArray SEAT = IloNumArray(env, 2, 24, 216);
+		IloInt K = (SEAT[0] + SEAT[1]) * 5;
 
-		IloInt numNode = (pow(numChi, numStage) - 1)/(numChi - 1);
-		IloInt NT = pow(numChi, numStage-1);
+		IloNumArray4 DEMAND(env);  // [t][k][i][j]
+		readArray<IloNumArray4> (DEMAND, "data/demand.dat");
 
 		IloModel mod(env);
-		
+		int n, i, j, k, t;
+
 		// initialize decision variables
-		int n, i, k, t;
-		IloNumVarArray2 x(env, numNode);  // asset allocation
-		IloNumVarArray2 buy(env, numNode);  // buy amount
-		IloNumVarArray2 sell(env, numNode); // sell amount
-		IloIntVarArray2 pos(env, numNode);  // position at each node
+		IloNumVarArray3 B(env, numNode);
+		IloNumVarArray3 C(env, numNode);
+		// IloNumVarArray3 P(env, numNode);
+		IloNumVarArray3 b(env, numNode);
+		IloNumVarArray3 c(env, numNode);
+		// IloNumVarArray3 z(env, numNode);
+		// IloNumVarArray3 zp(env, numNode);
+		// IloNumVarArray3 zd(env, numNode);
 		char varName[100];
 		for ( n = 0; n < numNode; ++n )
 		{
-			x[n] = IloNumVarArray(env, numStock, 0.0, IloInfinity);
-			for ( i = 0; i < numStock; ++i )
-			{
-				sprintf(varName, "x_%d%d", n, i);
-				x[n][i].setName(varName);
-			}
+			B[n] = IloNumVarArray2(env, ODI);
+			C[n] = IloNumVarArray2(env, ODI);
+			// P[n] = IloNumVarArray2(env, ODI);
+			b[n] = IloNumVarArray2(env, ODI);
+			c[n] = IloNumVarArray2(env, ODI);
+			// z[n] = IloNumVarArray2(env, ODI);
+			// zp[n] = IloNumVarArray2(env, ODI);
+			// zd[n] = IloNumVarArray2(env, ODI);
 
-			buy[n] = IloNumVarArray(env, numStock, 0.0, IloInfinity);
-			for ( i = 0; i < numStock; ++i )
+			for ( i = 0; i < ODI; ++i )
 			{
-				sprintf(varName, "b_%d%d", n, i);
-				buy[n][i].setName(varName);
-			}
+				if ( ! LP )
+				{
+					B[n][i] = IloNumVarArray(env, CLASS, 0, 511, ILOINT);
+					C[n][i] = IloNumVarArray(env, CLASS, 0, 511, ILOINT);
+					// P[n][i] = IloNumVarArray(env, CLASS, 0, 511, ILOINT);
+					b[n][i] = IloNumVarArray(env, CLASS, 0, 511, ILOINT);
+					c[n][i] = IloNumVarArray(env, CLASS, 0, 511, ILOINT);
+					// z[n][i] = IloNumVarArray(env, CLASS, 0, 1, ILOINT);
+				}
+				else
+				{
+					B[n][i] = IloNumVarArray(env, CLASS, 0, 511);
+					C[n][i] = IloNumVarArray(env, CLASS, 0, 511);
+					// P[n][i] = IloNumVarArray(env, CLASS, 0, 511);
+					b[n][i] = IloNumVarArray(env, CLASS, 0, 511);
+					c[n][i] = IloNumVarArray(env, CLASS, 0, 511);
+					// z[n][i] = IloNumVarArray(env, CLASS, 0, 1);	
+				}
+				// zp[n][i] = IloNumVarArray(env, CLASS, 0, IloInfinity);
+				// zd[n][i] = IloNumVarArray(env, CLASS, 0, IloInfinity);
 
-			sell[n] = IloNumVarArray(env, numStock, 0.0, IloInfinity);
-			for ( i = 0; i < numStock; ++i )
-			{
-				sprintf(varName, "s_%d%d", n, i);
-				sell[n][i].setName(varName);
+				for ( j = 0; j < CLASS; ++j )
+				{ 
+					sprintf(varName, "B_%d_%d_%d", n, i, j);
+					B[n][i][j].setName(varName);
+					sprintf(varName, "C_%d_%d_%d", n, i, j);
+					C[n][i][j].setName(varName);
+					// sprintf(varName, "P_%d_%d_%d", n, i, j);
+					// P[n][i][j].setName(varName);
+					sprintf(varName, "b_%d_%d_%d", n, i, j);
+					b[n][i][j].setName(varName);
+					sprintf(varName, "c_%d_%d_%d", n, i, j);
+					c[n][i][j].setName(varName);
+					// sprintf(varName, "z_%d_%d_%d", n, i, j);
+					// z[n][i][j].setName(varName);
+					// sprintf(varName, "zp_%d_%d_%d", n, i, j);
+					// zp[n][i][j].setName(varName);
+					// sprintf(varName, "zd_%d_%d_%d", n, i, j);
+					// zd[n][i][j].setName(varName);
+				}
+				mod.add(B[n][i]);
+				mod.add(C[n][i]);
+				// mod.add(P[n][i]);
+				mod.add(b[n][i]);
+				mod.add(c[n][i]);
+				// mod.add(z[n][i]);
+				// mod.add(zp[n][i]);
+				// mod.add(zd[n][i]);
 			}
-
-			pos[n] = IloIntVarArray(env, numStock, 0.0, 1.0);
-			for ( i = 0; i < numStock; ++i )
-			{
-				sprintf(varName, "p_%d%d", n, i);
-				pos[n][i].setName(varName);
-			}
-
-			mod.add(x[n]);
-			mod.add(buy[n]);
-			mod.add(sell[n]);
-			mod.add(pos[n]);
 		}
-		
-
 		cout << "Decision variables constructed." << endl;
 
 		// construct objective function
 		IloObjective obj = IloMaximize(env);
 		IloExpr objExpr(env);
-		for ( n = numNode - NT; n < numNode; ++n )
+		IloExpr term(env);
+		for ( n = 1; n < numNode; ++n )
 		{
-			for ( k = 0; k < numChi; ++k )
-				objExpr += IloScalProd(x[n], scenario[numStage][k]);
+			int stage = ceil(log(numBranch + (numBranch - 1) * n)/log(numBranch)) - 1;
+			cout << stage << endl;
+			for ( i = 0; i < ODI; ++i )
+			{
+				if ( i < 6 )
+				{
+					term += IloScalProd(PRICE1, b[n][i]);
+					term -= IloScalProd(PRICE1, c[n][i]);
+					term = term / pow(numBranch, stage);
+					objExpr += term;
+					term.clear();
+				}
+				else
+				{
+					term += IloScalProd(PRICE2, b[n][i]);
+					term -= IloScalProd(PRICE2, c[n][i]);
+					term = term / pow(numBranch, stage);
+					objExpr += term;
+					term.clear();
+				}
+			}
+			obj.setExpr(objExpr);
+			mod.add(obj);
 		}
-		objExpr = objExpr / (NT * numChi);
-		obj.setExpr(objExpr);
-		mod.add(obj);
-
-		cout << "Objective function added to model." << endl;
+		cout << "Objective function constructed." << endl;
 
 		// construct constraints
 		IloRangeArray constr(env);
 		IloExpr expr(env);
-		for ( t = 0; t < numStage; ++t )
-		{
-			for ( n = (pow(numChi, t) - 1) / (numChi - 1) ; n < (pow(numChi, t+1) - 1) / (numChi - 1); ++n )
+		for ( i = 0; i < ODI; ++i )
+			for ( j = 0; j < CLASS; j++ )
 			{
-				int k = (n-1) % numChi;
-				// constraints " x(n) = r(n)x(a(n)) + buy(n) - sell(n)"
-				for ( i = 0; i < numStock; ++i )
-				{
-					if ( n == 0 )
-						expr = x[n][i] - initState[i] - buy[n][i] + sell[n][i];
-					else
-						expr = x[n][i] - scenario[t][k][i] * x[(n-1)/numChi][i] - buy[n][i] + sell[n][i];
-					constr.add(expr == 0);
-				}
-				expr.clear();
-
-				// not short sell
-				for ( i = 0; i < numStock; ++i )
-				{
-					if ( n == 0 )
-						expr = initState[i] - sell[n][i];
-					else
-						expr = scenario[t][k][i] * x[(n-1)/numChi][i] - sell[n][i];
-					constr.add(expr >= 0);
-				}
-				expr.clear();
-
-				// self-financing constraints 
-				for ( i = 0; i < numStock; ++i )
-				{
-					expr += (1 + buyTran[i]) * buy[n][i];
-					expr -= (1 - sellTran[i]) * sell[n][i];
-				}
+				expr = B[0][i][j];
 				constr.add(expr == 0);
 				expr.clear();
+				expr = C[0][i][j];
+				constr.add(expr == 0);
+				expr.clear();
+			}
 
-				// linking constraints
-				for ( i = 0; i < numStock; ++i )
+		for ( n = 0; n < numNode; ++n )
+			for ( i = 0; i < ODI; ++i )
+				for ( j = 0; j < 2; ++j )
+					constr.add(B[n][i][j] <= 63);
+		
+
+		for ( n = 1; n < numNode; ++n )
+		{
+			cout << n << ", " << numNode << endl;
+			int stage = ceil(log(numBranch + (numBranch - 1) * n)/log(numBranch)) - 1;
+			cout << stage << endl;
+			int p = (n-1)/numBranch;
+			for ( i = 0; i < ODI; ++i )
+			{
+				for ( j = 0; j < CLASS; ++j )
 				{
-					expr = x[n][i] - 1000 * pos[n][i];
+					expr = B[n][i][j] - B[p][i][j] - b[n][i][j];
+					constr.add(expr == 0);
+					expr.clear();
+
+					expr = C[n][i][j] - C[p][i][j] - c[n][i][j];
+					constr.add(expr == 0);
+					expr.clear();
+
+					// expr = b[n][i][j] + zd[n][i][j];
+					expr = b[n][i][j];
+					constr.add(expr <= DEMAND[stage][(n-1)%numBranch][i][j]);
+					expr.clear();
+
+					// expr = B[n][i][j] + zp[n][i][j] - P[p][i][j] / (1.0 - CLNRATE[j]) - 0.5;
+					// constr.add(expr <= 0);
+					// expr.clear();
+					// expr = B[n][i][j] + zp[n][i][j] - P[p][i][j] / (1.0 - CLNRATE[j]) + 0.5;
+					// constr.add(expr >= 0);
+					// expr.clear();
+
+					expr = C[n][i][j] - CLNRATE[j] * B[n][i][j] - 0.5;
 					constr.add(expr <= 0);
+					expr.clear();
+					expr = C[n][i][j] - CLNRATE[j] * B[n][i][j] + 0.5;
+					constr.add(expr >= 0);
+					expr.clear();
+
+					// expr = zp[n][i][j] + K * z[n][i][j];
+					// constr.add(expr <= K);
+					// expr.clear();
+
+					// expr = zd[n][i][j] - K * z[n][i][j];
+					// constr.add(expr <= 0);
+					// expr.clear();
+
 				}
-				expr.clear();
-				for ( i = 0; i < numStock; ++i )
-					expr += pos[n][i];
-				constr.add(assetLimit[0] <= expr <= assetLimit[1]);
-				expr.clear();
+			}
+		}
 
-			} //end of loop over n
-		}// end of loop over t
-		expr.end();
+		int begin = (pow(numBranch, numStage - 1) - 1) / (numBranch - 1);
+
+		for ( n = begin; n < numNode; ++n )
+		{
+			// business class
+
+			expr = B[n][0][0] + B[n][0][1] + B[n][6][0] + B[n][6][1] +  B[n][8][0] + B[n][8][1]
+				 -(C[n][0][0] + C[n][0][1] + C[n][6][0] + C[n][6][1] +  C[n][8][0] + C[n][8][1]);
+			constr.add(expr <=  SEAT[0]);
+			expr.clear();
+
+			expr = B[n][1][0] + B[n][1][1] + B[n][7][0] + B[n][7][1] +	B[n][9][0] + B[n][9][1]
+				 -(C[n][1][0] + C[n][1][1] + C[n][7][0] + C[n][7][1] +	C[n][9][0] + C[n][9][1]);
+			constr.add(expr <=  SEAT[0]);
+			expr.clear();
+
+			expr = B[n][2][0] + B[n][2][1] + B[n][7][0] + B[n][7][1] + B[n][10][0] + B[n][10][1]
+				 -(C[n][2][0] + C[n][2][1] + C[n][7][0] + C[n][7][1] + C[n][10][0] + C[n][10][1]);
+			constr.add(expr <=  SEAT[0]);
+			expr.clear();
+
+			expr = B[n][3][0] + B[n][3][1] + B[n][6][0] + B[n][6][1] + B[n][11][0] + B[n][11][1]
+				 -(C[n][3][0] + C[n][3][1] + C[n][6][0] + C[n][6][1] + C[n][11][0] + C[n][11][1]);
+			constr.add(expr <=  SEAT[0]);
+			expr.clear();
+
+			expr = B[n][4][0] + B[n][4][1] + B[n][9][0] + B[n][9][1] + B[n][11][0] + B[n][11][1]
+				 -(C[n][4][0] + C[n][4][1] + C[n][9][0] + C[n][9][1] + C[n][11][0] + C[n][11][1]);
+			constr.add(expr <=  SEAT[0]);
+			expr.clear();
+
+			expr = B[n][5][0] + B[n][5][1] + B[n][8][0] + B[n][8][1] + B[n][10][0] + B[n][10][1]
+				 -(C[n][5][0] + C[n][5][1] + C[n][8][0] + C[n][8][1] + C[n][10][0] + C[n][10][1]);
+			constr.add(expr <=  SEAT[0]);
+			expr.clear();
+
+			// economic class
+
+			expr = B[n][0][2] + B[n][0][3] + B[n][0][4] + B[n][0][5] + 
+				   B[n][6][2] + B[n][6][3] + B[n][6][4] + B[n][6][5] +
+				   B[n][8][2] + B[n][8][3] + B[n][8][4] + B[n][8][5] -
+				  (C[n][0][2] + C[n][0][3] + C[n][0][4] + C[n][0][5] + 
+				   C[n][6][2] + C[n][6][3] + C[n][6][4] + C[n][6][5] +
+				   C[n][8][2] + C[n][8][3] + C[n][8][4] + C[n][8][5]);
+			constr.add(expr <=  SEAT[1]);
+			expr.clear();
+
+			expr = B[n][1][2] + B[n][1][3] + B[n][1][4] + B[n][1][5] + 
+				   B[n][7][2] + B[n][7][3] + B[n][7][4] + B[n][7][5] +
+				   B[n][9][2] + B[n][9][3] + B[n][9][4] + B[n][9][5] -
+				  (C[n][1][2] + C[n][1][3] + C[n][1][4] + C[n][1][5] + 
+				   C[n][7][2] + C[n][7][3] + C[n][7][4] + C[n][7][5] +
+				   C[n][9][2] + C[n][9][3] + C[n][9][4] + C[n][9][5]);
+			constr.add(expr <=  SEAT[1]);
+			expr.clear();
+			
+			expr = B[n][2][2] + B[n][2][3] + B[n][2][4] + B[n][2][5] + 
+				   B[n][7][2] + B[n][7][3] + B[n][7][4] + B[n][7][5] +
+				   B[n][10][2] + B[n][10][3] + B[n][10][4] + B[n][10][5] -
+				  (C[n][2][2] + C[n][2][3] + C[n][2][4] + C[n][2][5] + 
+				   C[n][7][2] + C[n][7][3] + C[n][7][4] + C[n][7][5] +
+				   C[n][10][2] + C[n][10][3] + C[n][10][4] + C[n][10][5]);
+			constr.add(expr <=  SEAT[1]);
+
+			expr = B[n][3][2] + B[n][3][3] + B[n][3][4] + B[n][3][5] + 
+				   B[n][6][2] + B[n][6][3] + B[n][6][4] + B[n][6][5] +
+				   B[n][11][2] + B[n][11][3] + B[n][11][4] + B[n][11][5] -
+				  (C[n][3][2] + C[n][3][3] + C[n][3][4] + C[n][3][5] + 
+				   C[n][6][2] + C[n][6][3] + C[n][6][4] + C[n][6][5] +
+				   C[n][11][2] + C[n][11][3] + C[n][11][4] + C[n][11][5]);
+			constr.add(expr <=  SEAT[1]);
+			expr.clear();
+
+			expr = B[n][4][2] + B[n][4][3] + B[n][4][4] + B[n][4][5] + 
+				   B[n][9][2] + B[n][9][3] + B[n][9][4] + B[n][9][5] +
+				   B[n][11][2] + B[n][11][3] + B[n][11][4] + B[n][11][5] -
+				  (C[n][4][2] + C[n][4][3] + C[n][4][4] + C[n][4][5] + 
+				   C[n][9][2] + C[n][9][3] + C[n][9][4] + C[n][9][5] +
+				   C[n][11][2] + C[n][11][3] + C[n][11][4] + C[n][11][5]);
+			constr.add(expr <=  SEAT[1]);
+			expr.clear();
+
+			expr = B[n][5][2] + B[n][5][3] + B[n][5][4] + B[n][5][5] + 
+				   B[n][8][2] + B[n][8][3] + B[n][8][4] + B[n][8][5] +
+				   B[n][10][2] + B[n][10][3] + B[n][10][4] + B[n][10][5] -
+				  (C[n][5][2] + C[n][5][3] + C[n][5][4] + C[n][5][5] + 
+				   C[n][8][2] + C[n][8][3] + C[n][8][4] + C[n][8][5] +
+				   C[n][10][2] + C[n][10][3] + C[n][10][4] + C[n][10][5]);
+			constr.add(expr <=  SEAT[1]);
+			expr.clear();
+		}
+
+		// int begin = (pow(numBranch, numStage - 2) - 1) / (numBranch - 1);
+		// int end = (pow(numBranch, numStage - 1) - 1) / (numBranch - 1);
+
+		// cout << begin << end << endl;
+		// for ( n = begin; n < end; ++n )
+		// {
+		// 	// business class
+
+		// 	expr = P[n][0][0] + P[n][0][1] +
+		// 	       P[n][6][0] + P[n][6][1] + 
+		// 	       P[n][8][0] + P[n][8][1];
+		// 	constr.add(expr <=  SEAT[0]);
+		// 	expr.clear();
+
+		// 	expr = P[n][1][0] + P[n][1][1] +
+		// 	       P[n][7][0] + P[n][7][1] +
+		// 	       P[n][9][0] + P[n][9][1];
+		// 	constr.add(expr <=  SEAT[0]);
+		// 	expr.clear();
+
+		// 	expr = P[n][2][0] + P[n][2][1] +
+		// 	       P[n][7][0] + P[n][7][1] +
+		// 	       P[n][10][0] + P[n][10][1];
+		// 	constr.add(expr <=  SEAT[0]);
+		// 	expr.clear();
+
+		// 	expr = P[n][3][0] + P[n][3][1] +
+		// 	       P[n][6][0] + P[n][6][1] +
+		// 	       P[n][11][0] + P[n][11][1];
+		// 	constr.add(expr <=  SEAT[0]);
+		// 	expr.clear();
+
+		// 	expr = P[n][4][0] + P[n][4][1] +
+		// 	       P[n][9][0] + P[n][9][1] +
+		// 	       P[n][11][0] + P[n][11][1];
+		// 	constr.add(expr <=  SEAT[0]);
+		// 	expr.clear();
+
+		// 	expr = P[n][5][0] + P[n][5][1] +
+		// 	       P[n][8][0] + P[n][8][1] +
+		// 	       P[n][10][0] + P[n][10][1];
+		// 	constr.add(expr <=  SEAT[0]);
+		// 	expr.clear();
+
+		// 	// economic class
+
+		// 	expr = P[n][0][2] + P[n][0][3] + P[n][0][4] + P[n][0][5] + 
+		// 		   P[n][6][2] + P[n][6][3] + P[n][6][4] + P[n][6][5] +
+		// 		   P[n][8][2] + P[n][8][3] + P[n][8][4] + P[n][8][5];
+		// 	constr.add(expr <=  SEAT[1]);
+		// 	expr.clear();
+
+		// 	expr = P[n][1][2] + P[n][1][3] + P[n][1][4] + P[n][1][5] + 
+		// 		   P[n][7][2] + P[n][7][3] + P[n][7][4] + P[n][7][5] +
+		// 		   P[n][9][2] + P[n][9][3] + P[n][9][4] + P[n][9][5];
+		// 	constr.add(expr <=  SEAT[1]);
+		// 	expr.clear();
+			
+		// 	expr = P[n][2][2] + P[n][2][3] + P[n][2][4] + P[n][2][5] + 
+		// 		   P[n][7][2] + P[n][7][3] + P[n][7][4] + P[n][7][5] +
+		// 		   P[n][10][2] + P[n][10][3] + P[n][10][4] + P[n][10][5];
+		// 	constr.add(expr <=  SEAT[1]);
+
+		// 	expr = P[n][3][2] + P[n][3][3] + P[n][3][4] + P[n][3][5] + 
+		// 		   P[n][6][2] + P[n][6][3] + P[n][6][4] + P[n][6][5] +
+		// 		   P[n][11][2] + P[n][11][3] + P[n][11][4] + P[n][11][5];
+		// 	constr.add(expr <=  SEAT[1]);
+		// 	expr.clear();
+
+		// 	expr = P[n][4][2] + P[n][4][3] + P[n][4][4] + P[n][4][5] + 
+		// 		   P[n][9][2] + P[n][9][3] + P[n][9][4] + P[n][9][5] +
+		// 		   P[n][11][2] + P[n][11][3] + P[n][11][4] + P[n][11][5];
+		// 	constr.add(expr <=  SEAT[1]);
+		// 	expr.clear();
+
+		// 	expr = P[n][5][2] + P[n][5][3] + P[n][5][4] + P[n][5][5] + 
+		// 		   P[n][8][2] + P[n][8][3] + P[n][8][4] + P[n][8][5] +
+		// 		   P[n][10][2] + P[n][10][3] + P[n][10][4] + P[n][10][5];
+		// 	constr.add(expr <=  SEAT[1]);
+		// 	expr.clear();
+		// }
+
 		mod.add(constr);
+		expr.end();
 
-		cout << "Constraints added to model." << endl;
 
-		// create cplex algorithm
+		cout << "Constraints constructed." << endl;
+
+		// create cplex and solve
 		IloCplex cplex(mod);
-		
-		// write model to file
-		// char fileName[100];
-		// sprintf(fileName, "tree_model.lp");
-		// cplex.exportModel(fileName);
-		
+		cplex.exportModel("tree.lp");
 		cplex.solve();
 
 		cout << "=============================================" << endl;
@@ -186,42 +419,59 @@ int main ()
 		if ( solStatus == IloAlgorithm::Optimal )
 		{
 			cout << "Optimal value: " << cplex.getObjValue() << endl;
-			ofstream table ("tree.csv", ios::out | ios::app);
-			if ( table.is_open() )
-			{
-				table << numStage << ", " <<
-				NT <<
-				objVal << ", " << 
-				cplex.getTime() << endl;
-			}
+
+			// IloNumArray Pvals(env);
+			// IloNumArray Bvals(env);
+			// IloNumArray Cvals(env);
+			// IloNumArray bvals(env);
+			// IloNumArray cvals(env);
+			// for ( n = 0; n < numNode; ++n )
+			// 	for ( i = 0; i < ODI; ++i )
+			// 	{
+			// 		cplex.getValues(Pvals, P[n][i]);
+			// 		cplex.getValues(Bvals, B[n][i]);
+			// 		cplex.getValues(Cvals, C[n][i]);
+			// 		cplex.getValues(bvals, b[n][i]);
+			// 		cplex.getValues(cvals, c[n][i]);
+			// 		for ( j = 0; j < CLASS; ++j )
+			// 		{
+			// 			if (Pvals[j] != 0)
+			// 				cout << P[n][i][j].getName() << " = " << Pvals[j] << ", ";
+			// 			if (Bvals[j] != 0)
+			// 				cout << B[n][i][j].getName() << " = " << Bvals[j] << ", ";
+			// 			if (Cvals[j] != 0)
+			// 				cout << C[n][i][j].getName() << " = " << Cvals[j] << ", ";
+			// 			if (bvals[j] != 0)
+			// 				cout << b[n][i][j].getName() << " = " << bvals[j] << ", ";
+			// 			if (cvals[j] != 0)
+			// 				cout << c[n][i][j].getName() << " = " << cvals[j];
+			// 			cout << " " << endl;
+			// 		}
+			// 	}
+
+
+
+			// ofstream table ("tree.csv", ios::out | ios::app);
+			// if ( table.is_open() )
+			// {
+			// 	table << numStage << ", " <<
+			// 	NT <<
+			// 	objVal << ", " << 
+			// 	cplex.getTime() << endl;
+			// }
 		}
-			/*
-			cout << scenario << endl;
-			IloNumArray val(env);
-			for ( n = 0; n < numNode; ++n )
-			{
-				cout << "====================================" << endl;
-				cout << "node " << n << endl;
-				cplex.getValues(val, x[n]);
-				cout << "position: " << val << endl;
-				cplex.getValues(val, buy[n]);
-				cout << "buy decision: " << val << endl;
-				cplex.getValues(val, sell[n]);
-				cout << "sell decision: " << val << endl;
-			}
-			*/
 	}
 	catch (const IloException & e)
 	{
 		cerr << "Exception caught: " << e << endl;
 	}
-	catch (char const* status)
+	catch (char const * status)
 	{
 		cerr << "Exception caught: " << status << endl;
 	}
 	catch (...)
 	{
-		cerr << "Unknown exception caught!" << endl;
+		cerr << "Unknown exception caught! " << endl;
 	}
 
 	return 0;
