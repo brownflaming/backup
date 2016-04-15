@@ -154,13 +154,13 @@ int main (int argc, char *argv[])
 				double stdReLB = std_dev(recentLB);
 				if ( stdReLB < TOLOPT )
 				{
-					if ( fData.numFWsample == 50 )
+					if ( fData.numFWsample == 20 )
 					{
 						cout << "Lower bound has stablized." << endl;
 						break;
 					}
 					else
-						fData.numFWsample = 50;			
+						fData.numFWsample = 20;			
 				}
 				else
 					fData.numFWsample = initSampleSize;
@@ -172,16 +172,16 @@ int main (int argc, char *argv[])
 
 		} while ( (iteration < MAXITER) && (runtime < 18000) );
 
-		fData.numFWsample = 100;
-		getSamplePaths(samplePaths, fData_p);
-		forward(models, fData_p, samplePaths, candidateSol, ub_c, ub_l, ub_r);
-
 		end = chrono::system_clock::now();
 		elapsed_seconds = end - start;
 		runtime = elapsed_seconds.count();
 		printf("Total running time %.2f seconds.\n", runtime);
-
-		ofstream output ("0305.txt", ios::out | ios::app);
+		
+		fData.numFWsample = 1500;
+		getSamplePaths(samplePaths, fData_p);
+		forward(models, fData_p, samplePaths, candidateSol, ub_c, ub_l, ub_r);
+		
+		ofstream output ("0410.txt", ios::out | ios::app);
 		if ( output.is_open() )
 		{
 			output << "==================================================" << endl;
@@ -200,7 +200,7 @@ int main (int argc, char *argv[])
 			output << "right 95\% CI for the upper bound: " << ub_r << endl;
 		}
 
-		ofstream table ("0305.csv", ios::out | ios::app);
+		ofstream table ("0410.csv", ios::out | ios::app);
 		if ( table.is_open() )
 		{
 			table << fData.numStage << ", " <<

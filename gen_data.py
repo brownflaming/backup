@@ -35,6 +35,7 @@ if __name__ == "__main__":
 	print k1, k2
 	
 	dimX = k * numStock
+	pdb.set_trace()
 	T = np.zeros((numStock, dimX))   # binary expansion matrix hat{x} = T*x
 	for i in range(numStock):
 		for j in range(k1, -k2, -1):
