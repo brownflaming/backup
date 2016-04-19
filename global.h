@@ -2,10 +2,10 @@
 #define GLOBALS_H_INCLUDED
 
 /*Maximum number of iterations*/
-const int MAXITER=10000;
+const int MAXITER=120;
 
 /*Tolerance for optimality : stopping for SDDP iterations*/
-const double TOLOPT = 1e-2;
+const double TOLOPT = 1;
 
 /*Confidence interval parameter : z_alpha */
 const double ZALPHA = 1.96;

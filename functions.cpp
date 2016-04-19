@@ -368,9 +368,9 @@ void buildModel (model * models, formatData * fData_p, const bool LP)
 		models[t].cplex = IloCplex(models[t].mod);
 
 		// set model algorithm
-		models[t].cplex.setParam(IloCplex::EpGap, 0.01);
+		models[t].cplex.setParam(IloCplex::EpGap, 0.05);
 
-		// models[t].cplex.setParam(IloCplex::RootAlg, IloCplex::Primal);
+		models[t].cplex.setParam(IloCplex::RootAlg, IloCplex::Primal);
 
 		// set model solve output
 		models[t].cplex.setOut(models[t].env.getNullStream());
@@ -515,7 +515,8 @@ void forward (model * models, formatData * fData_p,
 	for ( p = 0; p < sampleSize; ++p )
 	{
 		// cout << "================================" << endl;
-		// cout << "Compute solution for sample path p =  " << p << endl;
+		cout << "Compute solution for sample path p =  " << p << endl;
+		cout << "\e[A";
 		candidateSol.add(IloNumArray2(fData_p->dataEnv));
 
 		for ( t = 0; t < fData_p->numStage; ++t )
@@ -1005,7 +1006,7 @@ void backward (model * models, formatData * fData_p, const IloNumArray3 candidat
 					else // infeasible / unbounded
 					{
 						cout << "Solution status: " << models[t].cplex.getStatus() << endl;
-						models[t].cplex.exportModel("LP.lp");
+						models[t].cplex.exportModel("LP.sav");
 						throw ("LP has no solution...");
 					}
 			

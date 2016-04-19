@@ -32,7 +32,7 @@ int main (int argc, char *argv[])
 		IloInt numBranch;
 		readArray<IloInt> (numStage, "data/stage.dat");
 		readArray<IloInt> (numBranch, "data/branch.dat");
-		cout << "test" << endl;
+		// cout << "test" << endl;
 		IloInt ODI = 12;
 		IloInt CLASS = 6;
 		IloInt numNode = (pow(numBranch, numStage) - 1)/(numBranch - 1);
@@ -131,7 +131,7 @@ int main (int argc, char *argv[])
 		for ( n = 1; n < numNode; ++n )
 		{
 			int stage = ceil(log(numBranch + (numBranch - 1) * n)/log(numBranch)) - 1;
-			cout << stage << endl;
+			// cout << stage << endl;
 			for ( i = 0; i < ODI; ++i )
 			{
 				if ( i < 6 )
@@ -178,9 +178,9 @@ int main (int argc, char *argv[])
 
 		for ( n = 1; n < numNode; ++n )
 		{
-			cout << n << ", " << numNode << endl;
+			// cout << n << ", " << numNode << endl;
 			int stage = ceil(log(numBranch + (numBranch - 1) * n)/log(numBranch)) - 1;
-			cout << stage << endl;
+			// cout << stage << endl;
 			int p = (n-1)/numBranch;
 			for ( i = 0; i < ODI; ++i )
 			{
@@ -227,7 +227,7 @@ int main (int argc, char *argv[])
 
 		int begin = (pow(numBranch, numStage - 1) - 1) / (numBranch - 1);
 
-		for ( n = begin; n < numNode; ++n )
+		for ( n = 0; n < numNode; ++n )
 		{
 			// business class
 

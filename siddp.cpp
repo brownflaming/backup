@@ -54,7 +54,7 @@ int main (int argc, char *argv[])
 		formatData fData;
 		formatData * fData_p = & fData;
 		readData (fData_p);
-		cout << "All data has been read into fData." << endl;
+		cout << "All data has been read into fData" << endl;
 		cout << "==================================================" << endl;
 		cout << "total number of stages: " << fData.numStage << endl;
 		cout << "number of scenarios at each stage: " << fData.numScen << endl;
@@ -135,26 +135,28 @@ int main (int argc, char *argv[])
 			    After a certain number of iterations, if lower bound starts to stablize,
 				i.e., variance of the last five lower bounds is small enough
 			*/
-			if ( iteration >= 50 )
-			{
-				vector<float> recentLB;
-				for ( int i = 1; i < 10; ++i )
-					recentLB.push_back(lb[iteration-i]);
+			// if ( iteration >= 20 )
+			// {
+			// 	vector<float> recentLB;
+			// 	for ( int i = 1; i < 8; ++i )
+			// 		recentLB.push_back(lb[iteration-i]);
 
-				double stdReLB = std_dev(recentLB);
-				if ( stdReLB < TOLOPT )
-				{
-					if ( fData.numFWsample == 50 )
-					{
-						cout << "Lower bound has stablized." << endl;
-						break;
-					}
-					else
-						fData.numFWsample = 50;			
-				}
-				else
-					fData.numFWsample = initSampleSize;
-			}
+			// 	double stdReLB = std_dev(recentLB);
+			// 	if ( stdReLB < TOLOPT )
+			// 		break;
+			// 	// if ( stdReLB < TOLOPT )
+			// 	// {
+			// 	// 	if ( fData.numFWsample == 10 )
+			// 	// 	{
+			// 	// 		cout << "Lower bound has stablized." << endl;
+			// 	// 		break;
+			// 	// 	}
+			// 	// 	else
+			// 	// 		fData.numFWsample = 10;			
+			// 	// }
+			// 	// else
+			// 	// 	fData.numFWsample = initSampleSize;
+			// }
 			
 			
 			end = chrono::system_clock::now();
@@ -163,23 +165,23 @@ int main (int argc, char *argv[])
 
 		} while ( (iteration < MAXITER) && (runtime < 18000) );
 
-		char fileName[100];
-		for ( int t = 0; t < fData.numStage; ++t )
-		{
-			sprintf(fileName, "M_%d.lp", t);
-			models[t].cplex.exportModel(fileName);
-		}
-
-		fData.numFWsample = 1000;
-		getSamplePaths(samplePaths, fData_p);
-		forward(models, fData_p, samplePaths, candidateSol, ub_c, ub_l, ub_r, LP);
+		char fileName[200];
+		// for ( int t = 0; t < fData.numStage; ++t )
+		// {
+		// 	sprintf(fileName, "M_%d.lp", t);
+		// 	models[t].cplex.exportModel(fileName);
+		// }
 
 		end = chrono::system_clock::now();
 		elapsed_seconds = end - start;
 		runtime = elapsed_seconds.count();
 		printf("Total running time %.2f seconds.\n", runtime);
 
-		ofstream output ("0330.txt", ios::out | ios::app);
+		fData.numFWsample = 500;
+		getSamplePaths(samplePaths, fData_p);
+		forward(models, fData_p, samplePaths, candidateSol, ub_c, ub_l, ub_r, LP);
+
+		ofstream output ("0415.txt", ios::out | ios::app);
 		if ( output.is_open() )
 		{
 			output << "==================================================" << endl;
@@ -198,7 +200,7 @@ int main (int argc, char *argv[])
 			output << "right 95\% CI for the upper bound: " << ub_r << endl;
 		}
 
-		ofstream table ("0330.csv", ios::out | ios::app);
+		ofstream table ("0415.csv", ios::out | ios::app);
 		if ( table.is_open() )
 		{
 			table << fData.numStage << ", " <<

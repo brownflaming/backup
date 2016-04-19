@@ -10234,3 +10234,72 @@ Dual simplex - Optimal:  Objective = -1.2419911169e+05
 Solution time =    0.03 sec.  Iterations = 137 (0)
 Deterministic time = 17.29 ticks  (534.81 ticks/sec)
 
+
+Log started (V12.6.0.0) Fri Apr 15 18:40:48 2016
+
+
+Problem 'fw.lp' read.
+Read time = 0.30 sec. (8.44 ticks)
+Parallel mode: deterministic, using up to 4 threads for concurrent optimization.
+Tried aggregator 1 time.
+LP Presolve eliminated 1187 rows and 2473 columns.
+Reduced LP has 899 rows, 1093 columns, and 242438 nonzeros.
+Presolve time = 0.14 sec. (52.31 ticks)
+Initializing dual steep norms . . .
+
+Iteration log . . .
+Iteration:     1   Dual objective     =      -2028260.000000
+Reinitializing dual norms . . .
+
+Dual simplex solved model.
+
+
+Dual simplex - Optimal:  Objective = -1.3957281723e+05
+Solution time =    0.40 sec.  Iterations = 202 (0)
+Deterministic time = 129.39 ticks  (325.28 ticks/sec)
+
+
+Log started (V12.6.0.0) Sat Apr 16 12:19:12 2016
+
+
+Problem 'LP.lp' read.
+Read time = 0.01 sec. (0.34 ticks)
+Parallel mode: deterministic, using up to 4 threads for concurrent optimization.
+Tried aggregator 1 time.
+LP Presolve eliminated 1442 rows and 3051 columns.
+Aggregator did 37 substitutions.
+Reduced LP has 53 rows, 106 columns, and 329 nonzeros.
+Presolve time = 0.00 sec. (1.84 ticks)
+Initializing dual steep norms . . .
+
+Iteration log . . .
+Iteration:     1   Dual objective     =       -214060.000000
+Reinitializing dual norms . . .
+
+Dual simplex solved model.
+
+
+Dual simplex - Optimal:  Objective = -2.1406000000e+05
+Solution time =    0.04 sec.  Iterations = 8 (0)
+Deterministic time = 2.80 ticks  (79.23 ticks/sec)
+
+
+Log started (V12.6.0.0) Sat Apr 16 12:20:29 2016
+
+Warning:  File contains basis.  Basis is loaded.
+
+Problem 'LP.sav' read.
+Read time = 0.01 sec. (0.14 ticks)
+Parallel mode: deterministic, using up to 4 threads for concurrent optimization.
+
+Iteration log . . .
+Iteration:     1   Dual objective     =       -214501.666667
+Reinitializing dual norms . . .
+
+Dual simplex solved model.
+
+
+Dual simplex - Optimal:  Objective = -2.1449100000e+05
+Solution time =    0.01 sec.  Iterations = 47 (0)
+Deterministic time = 3.18 ticks  (311.51 ticks/sec)
+

@@ -884,3 +884,43 @@ Barrier time = 0.01 sec. (5.36 ticks)
 
 Dual simplex solved model.
 
+
+Log for 'fw.lp' Clone_1 (V12.6.0.0) Fri Apr 15 18:40:52 2016
+
+Tried aggregator 0 times.
+No LP presolve or aggregator reductions.
+Presolve time = 0.03 sec. (10.65 ticks)
+Parallel mode: using up to 3 threads for barrier.
+Number of nonzeros in lower triangle of A*A' = 311265
+Total time for automatic ordering = 0.15 sec. (254.57 ticks)
+Barrier time = 0.17 sec. (264.64 ticks)
+
+Dual simplex solved model.
+
+
+Log for 'LP.lp' Clone_1 (V12.6.0.0) Sat Apr 16 12:19:16 2016
+
+Tried aggregator 0 times.
+No LP presolve or aggregator reductions.
+Presolve time = 0.00 sec. (0.03 ticks)
+Parallel mode: using up to 3 threads for barrier.
+Number of nonzeros in lower triangle of A*A' = 167
+Using Approximate Minimum Degree ordering
+Total time for automatic ordering = 0.00 sec. (0.02 ticks)
+Summary statistics for Cholesky factor:
+  Threads                   = 3
+  Rows in Factor            = 53
+  Integer space required    = 79
+  Total non-zeros in factor = 464
+  Total FP ops to factor    = 5510
+Barrier time = 0.00 sec. (0.06 ticks)
+
+Dual simplex solved model.
+
+
+Log for 'LP.sav' Clone_1 (V12.6.0.0) Sat Apr 16 12:20:35 2016
+
+Presolve time = 0.00 sec. (0.78 ticks)
+
+Dual simplex solved model.
+

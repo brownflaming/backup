@@ -17,11 +17,11 @@ def write(filename, object):
 
 if __name__ == "__main__":
 
-	numStage = 5
-	scenPerStage = 3
+	numStage = 14
+	scenPerStage = 10
 	numScen = np.ones(numStage-1, np.int32) * scenPerStage
 	numScen = np.insert(numScen, 0, 1)
-	numFWsample = 2
+	numFWsample = 1
 
 	ODI = 12 # AH HA BH HB CH HC ABH BHA AHCCHA BHC CHB
 	FC = 6 # B1 B2 E1 E2 E3 E4
@@ -41,11 +41,11 @@ if __name__ == "__main__":
 	print R.shape
 
 	nrow = ODI * FC * 5 + CABIN * LEG
-	x_ub = SEAT * 2 ## upper bound on x variables, this is problem dependent
+	x_ub = SEAT * 1.1 ## upper bound on x variables, this is problem dependent
 	numBin = np.floor(np.log2(np.ceil(x_ub))).astype(int) + 1  # number of binary needed for integer part
 	dimB = ODI * FC
 	dimX_old = dimB * 2 # (B, C, P)
-	dimX = (numBin[0] * 2 + numBin[1] * 4) * ODI * 2  # (12+36)*12*3
+	dimX = (numBin[0] * 2 + numBin[1] * 4) * ODI * 2  # (10+32)*12*3
 	T = np.zeros((dimX_old, dimX))   # binary expansion matrix hat{x} = T*x
 	print T.shape
 	# pdb.set_trace()
@@ -70,8 +70,8 @@ if __name__ == "__main__":
 	# constrSlack = np.transpose(constrSlack)
 	# print constrSlack
 
-	# dataDir = "bin/data/" + str(numStage) + "_" + str(scenPerStage) + "/"
-	dataDir = "bin/data/"
+	dataDir = "bin/data/" + str(numStage) + "_" + str(scenPerStage) + "/"
+	# dataDir = "bin/data/"
 	if not os.path.exists(dataDir):
 		os.makedirs(dataDir)
 
@@ -100,7 +100,7 @@ if __name__ == "__main__":
 	print "y1Obj: ", y1Obj.shape
 
 	# coefficient for y2 [ ]
-	y2Obj = 1e7* np.ones((numStage, nrow * 2))
+	y2Obj = np.zeros((numStage, nrow))
 	write(dataDir + "y2.dat", str(y2Obj.tolist()))
 	print "y2Obj: ", y2Obj.shape
 
@@ -155,7 +155,7 @@ if __name__ == "__main__":
 
 	## matrix of y2 (local continuous) variables
 	W2 = []
-	matY2 = np.array(find(np.column_stack((np.identity(nrow), -np.identity(nrow)))))
+	matY2 = np.array(find(np.zeros((nrow, nrow*2))))
 	for t in xrange(numStage):
 		W2.append(matY2.tolist())
 	write(dataDir + "W2.dat", str(W2))
@@ -175,7 +175,7 @@ if __name__ == "__main__":
 	rhs1 = np.concatenate((np.zeros(dimB*2), 0.5 * np.ones(dimB * 2),\
 						   np.zeros(dimB), C0 ))
 	rhs2 = np.concatenate((np.zeros(dimB*2), 0.5 * np.ones(dimB * 2),\
-						   np.zeros(dimB), C0 * 5 ))
+						   np.zeros(dimB), C0 ))
 	for t in xrange(numStage):
 		if (t == numStage - 1):
 			b[t] = rhs1
@@ -201,9 +201,10 @@ if __name__ == "__main__":
 	gammaScale = np.tile(np.array([1.5,1.5,1.2,1.2,1.0,1.0]), (ODI, 1))
 
 	betaShape = np.array([[12,8,6,4,3,2],[1.5,2.0,2.0,3.0,4.0,4.0]])
-	# dcp = (182 - np.array([182, 126, 84, 56, 35, 21, 14, 10, 7, 5, 3, 2, 1, 0]))/182.0
+	dcp = (182 - np.array([182, 126, 84, 56, 35, 21, 14, 10, 7, 5, 3, 2, 1, 0]))/182.0
+	# dcp = (182 - np.array([182, 126, 84, 56, 35, 21, 14, 10, 7, 5, 2, 0]))/182.0
 	# dcp = (182 - np.array([182, 35, 7, 0]))/182.0
-	dcp = np.arange(0,183,182/(numStage-1))/182.0
+	# dcp = np.arange(0,183,182/(numStage-1))/182.0
 	prop = np.zeros((FC, numStage))
 	for i in range(FC):
 		prop[i] = beta.cdf(dcp, betaShape[0][i], betaShape[1][i])
@@ -249,9 +250,12 @@ if __name__ == "__main__":
 
 	newScenTree = scenTree.reshape((numStage, scenPerStage, ODI, FC))
 	# print newScenTree
-	write("tree/data/demand.dat", str(newScenTree.tolist()))
-	write("tree/data/stage.dat", str(numStage))
-	write("tree/data/branch.dat", str(scenPerStage))
+	dataDir = "tree/data/" + str(numStage) + "_" + str(scenPerStage) + "/"
+	if not os.path.exists(dataDir):
+		os.makedirs(dataDir)
+	write(dataDir + "demand.dat", str(newScenTree.tolist()))
+	write(dataDir + "stage.dat", str(numStage))
+	write(dataDir + "branch.dat", str(scenPerStage))
 
 	####################################################################
 	# extensive formulation data
