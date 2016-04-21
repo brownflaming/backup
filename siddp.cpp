@@ -36,7 +36,7 @@ int main (int argc, char *argv[])
 		bool LP = atoi(argv[5]);
 		if ( LP && (cutFlag[1] + cutFlag[2] + cutFlag[3]) )
 		{
-			cerr << "Only Benders' cut can be used in LP relaxation." << endl;
+			cerr << "Only Benders' cuts can be used in LP relaxation." << endl;
 			throw (-1);
 		}
 
@@ -135,28 +135,28 @@ int main (int argc, char *argv[])
 			    After a certain number of iterations, if lower bound starts to stablize,
 				i.e., variance of the last five lower bounds is small enough
 			*/
-			// if ( iteration >= 20 )
-			// {
-			// 	vector<float> recentLB;
-			// 	for ( int i = 1; i < 8; ++i )
-			// 		recentLB.push_back(lb[iteration-i]);
+			if ( iteration >= 20 )
+			{
+				vector<float> recentLB;
+				for ( int i = 1; i < 8; ++i )
+					recentLB.push_back(lb[iteration-i]);
 
-			// 	double stdReLB = std_dev(recentLB);
-			// 	if ( stdReLB < TOLOPT )
-			// 		break;
-			// 	// if ( stdReLB < TOLOPT )
-			// 	// {
-			// 	// 	if ( fData.numFWsample == 10 )
-			// 	// 	{
-			// 	// 		cout << "Lower bound has stablized." << endl;
-			// 	// 		break;
-			// 	// 	}
-			// 	// 	else
-			// 	// 		fData.numFWsample = 10;			
-			// 	// }
-			// 	// else
-			// 	// 	fData.numFWsample = initSampleSize;
-			// }
+				double stdReLB = std_dev(recentLB);
+				// if ( stdReLB < TOLOPT )
+				// 	break;
+				if ( stdReLB < TOLOPT )
+				{
+					if ( fData.numFWsample == 50 )
+					{
+						cout << "Lower bound has stablized." << endl;
+						break;
+					}
+					else
+						fData.numFWsample = 50;			
+				}
+				else
+					fData.numFWsample = initSampleSize;
+			}
 			
 			
 			end = chrono::system_clock::now();
@@ -165,7 +165,7 @@ int main (int argc, char *argv[])
 
 		} while ( (iteration < MAXITER) && (runtime < 18000) );
 
-		char fileName[200];
+		char fileName[300];
 		// for ( int t = 0; t < fData.numStage; ++t )
 		// {
 		// 	sprintf(fileName, "M_%d.lp", t);
@@ -181,7 +181,7 @@ int main (int argc, char *argv[])
 		getSamplePaths(samplePaths, fData_p);
 		forward(models, fData_p, samplePaths, candidateSol, ub_c, ub_l, ub_r, LP);
 
-		ofstream output ("0415.txt", ios::out | ios::app);
+		ofstream output ("0420.txt", ios::out | ios::app);
 		if ( output.is_open() )
 		{
 			output << "==================================================" << endl;
@@ -200,7 +200,7 @@ int main (int argc, char *argv[])
 			output << "right 95\% CI for the upper bound: " << ub_r << endl;
 		}
 
-		ofstream table ("0415.csv", ios::out | ios::app);
+		ofstream table ("0420.csv", ios::out | ios::app);
 		if ( table.is_open() )
 		{
 			table << fData.numStage << ", " <<

@@ -51,10 +51,10 @@ int main (int argc, char *argv[])
 
 		// initialize decision variables
 		IloNumVarArray3 B(env, numNode);
-		IloNumVarArray3 C(env, numNode);
+		// IloNumVarArray3 C(env, numNode);
 		// IloNumVarArray3 P(env, numNode);
 		IloNumVarArray3 b(env, numNode);
-		IloNumVarArray3 c(env, numNode);
+		// IloNumVarArray3 c(env, numNode);
 		// IloNumVarArray3 z(env, numNode);
 		// IloNumVarArray3 zp(env, numNode);
 		// IloNumVarArray3 zd(env, numNode);
@@ -62,10 +62,10 @@ int main (int argc, char *argv[])
 		for ( n = 0; n < numNode; ++n )
 		{
 			B[n] = IloNumVarArray2(env, ODI);
-			C[n] = IloNumVarArray2(env, ODI);
+			// C[n] = IloNumVarArray2(env, ODI);
 			// P[n] = IloNumVarArray2(env, ODI);
 			b[n] = IloNumVarArray2(env, ODI);
-			c[n] = IloNumVarArray2(env, ODI);
+			// c[n] = IloNumVarArray2(env, ODI);
 			// z[n] = IloNumVarArray2(env, ODI);
 			// zp[n] = IloNumVarArray2(env, ODI);
 			// zd[n] = IloNumVarArray2(env, ODI);
@@ -75,19 +75,19 @@ int main (int argc, char *argv[])
 				if ( ! LP )
 				{
 					B[n][i] = IloNumVarArray(env, CLASS, 0, 511, ILOINT);
-					C[n][i] = IloNumVarArray(env, CLASS, 0, 511, ILOINT);
+					// C[n][i] = IloNumVarArray(env, CLASS, 0, 511, ILOINT);
 					// P[n][i] = IloNumVarArray(env, CLASS, 0, 511, ILOINT);
 					b[n][i] = IloNumVarArray(env, CLASS, 0, 511, ILOINT);
-					c[n][i] = IloNumVarArray(env, CLASS, 0, 511, ILOINT);
+					// c[n][i] = IloNumVarArray(env, CLASS, 0, 511, ILOINT);
 					// z[n][i] = IloNumVarArray(env, CLASS, 0, 1, ILOINT);
 				}
 				else
 				{
 					B[n][i] = IloNumVarArray(env, CLASS, 0, 511);
-					C[n][i] = IloNumVarArray(env, CLASS, 0, 511);
+					// C[n][i] = IloNumVarArray(env, CLASS, 0, 511);
 					// P[n][i] = IloNumVarArray(env, CLASS, 0, 511);
 					b[n][i] = IloNumVarArray(env, CLASS, 0, 511);
-					c[n][i] = IloNumVarArray(env, CLASS, 0, 511);
+					// c[n][i] = IloNumVarArray(env, CLASS, 0, 511);
 					// z[n][i] = IloNumVarArray(env, CLASS, 0, 1);	
 				}
 				// zp[n][i] = IloNumVarArray(env, CLASS, 0, IloInfinity);
@@ -97,14 +97,14 @@ int main (int argc, char *argv[])
 				{ 
 					sprintf(varName, "B_%d_%d_%d", n, i, j);
 					B[n][i][j].setName(varName);
-					sprintf(varName, "C_%d_%d_%d", n, i, j);
-					C[n][i][j].setName(varName);
+					// sprintf(varName, "C_%d_%d_%d", n, i, j);
+					// C[n][i][j].setName(varName);
 					// sprintf(varName, "P_%d_%d_%d", n, i, j);
 					// P[n][i][j].setName(varName);
 					sprintf(varName, "b_%d_%d_%d", n, i, j);
 					b[n][i][j].setName(varName);
-					sprintf(varName, "c_%d_%d_%d", n, i, j);
-					c[n][i][j].setName(varName);
+					// sprintf(varName, "c_%d_%d_%d", n, i, j);
+					// c[n][i][j].setName(varName);
 					// sprintf(varName, "z_%d_%d_%d", n, i, j);
 					// z[n][i][j].setName(varName);
 					// sprintf(varName, "zp_%d_%d_%d", n, i, j);
@@ -113,10 +113,10 @@ int main (int argc, char *argv[])
 					// zd[n][i][j].setName(varName);
 				}
 				mod.add(B[n][i]);
-				mod.add(C[n][i]);
+				// mod.add(C[n][i]);
 				// mod.add(P[n][i]);
 				mod.add(b[n][i]);
-				mod.add(c[n][i]);
+				// mod.add(c[n][i]);
 				// mod.add(z[n][i]);
 				// mod.add(zp[n][i]);
 				// mod.add(zd[n][i]);
@@ -137,7 +137,7 @@ int main (int argc, char *argv[])
 				if ( i < 6 )
 				{
 					term += IloScalProd(PRICE1, b[n][i]);
-					term -= IloScalProd(PRICE1, c[n][i]);
+					// term -= IloScalProd(PRICE1, c[n][i]);
 					term = term / pow(numBranch, stage);
 					objExpr += term;
 					term.clear();
@@ -145,7 +145,7 @@ int main (int argc, char *argv[])
 				else
 				{
 					term += IloScalProd(PRICE2, b[n][i]);
-					term -= IloScalProd(PRICE2, c[n][i]);
+					// term -= IloScalProd(PRICE2, c[n][i]);
 					term = term / pow(numBranch, stage);
 					objExpr += term;
 					term.clear();
@@ -165,9 +165,9 @@ int main (int argc, char *argv[])
 				expr = B[0][i][j];
 				constr.add(expr == 0);
 				expr.clear();
-				expr = C[0][i][j];
-				constr.add(expr == 0);
-				expr.clear();
+				// expr = C[0][i][j];
+				// constr.add(expr == 0);
+				// expr.clear();
 			}
 
 		for ( n = 0; n < numNode; ++n )
@@ -190,9 +190,9 @@ int main (int argc, char *argv[])
 					constr.add(expr == 0);
 					expr.clear();
 
-					expr = C[n][i][j] - C[p][i][j] - c[n][i][j];
-					constr.add(expr == 0);
-					expr.clear();
+					// expr = C[n][i][j] - C[p][i][j] - c[n][i][j];
+					// constr.add(expr == 0);
+					// expr.clear();
 
 					// expr = b[n][i][j] + zd[n][i][j];
 					expr = b[n][i][j];
@@ -206,12 +206,12 @@ int main (int argc, char *argv[])
 					// constr.add(expr >= 0);
 					// expr.clear();
 
-					expr = C[n][i][j] - CLNRATE[j] * B[n][i][j] - 0.5;
-					constr.add(expr <= 0);
-					expr.clear();
-					expr = C[n][i][j] - CLNRATE[j] * B[n][i][j] + 0.5;
-					constr.add(expr >= 0);
-					expr.clear();
+					// expr = C[n][i][j] - CLNRATE[j] * B[n][i][j] - 0.5;
+					// constr.add(expr <= 0);
+					// expr.clear();
+					// expr = C[n][i][j] - CLNRATE[j] * B[n][i][j] + 0.5;
+					// constr.add(expr >= 0);
+					// expr.clear();
 
 					// expr = zp[n][i][j] + K * z[n][i][j];
 					// constr.add(expr <= K);
@@ -231,33 +231,33 @@ int main (int argc, char *argv[])
 		{
 			// business class
 
-			expr = B[n][0][0] + B[n][0][1] + B[n][6][0] + B[n][6][1] +  B[n][8][0] + B[n][8][1]
-				 -(C[n][0][0] + C[n][0][1] + C[n][6][0] + C[n][6][1] +  C[n][8][0] + C[n][8][1]);
+			expr = B[n][0][0] + B[n][0][1] + B[n][6][0] + B[n][6][1] +  B[n][8][0] + B[n][8][1];
+				 // -(C[n][0][0] + C[n][0][1] + C[n][6][0] + C[n][6][1] +  C[n][8][0] + C[n][8][1]);
 			constr.add(expr <=  SEAT[0]);
 			expr.clear();
 
-			expr = B[n][1][0] + B[n][1][1] + B[n][7][0] + B[n][7][1] +	B[n][9][0] + B[n][9][1]
-				 -(C[n][1][0] + C[n][1][1] + C[n][7][0] + C[n][7][1] +	C[n][9][0] + C[n][9][1]);
+			expr = B[n][1][0] + B[n][1][1] + B[n][7][0] + B[n][7][1] +	B[n][9][0] + B[n][9][1];
+				 // -(C[n][1][0] + C[n][1][1] + C[n][7][0] + C[n][7][1] +	C[n][9][0] + C[n][9][1]);
 			constr.add(expr <=  SEAT[0]);
 			expr.clear();
 
-			expr = B[n][2][0] + B[n][2][1] + B[n][7][0] + B[n][7][1] + B[n][10][0] + B[n][10][1]
-				 -(C[n][2][0] + C[n][2][1] + C[n][7][0] + C[n][7][1] + C[n][10][0] + C[n][10][1]);
+			expr = B[n][2][0] + B[n][2][1] + B[n][7][0] + B[n][7][1] + B[n][10][0] + B[n][10][1];
+				 // -(C[n][2][0] + C[n][2][1] + C[n][7][0] + C[n][7][1] + C[n][10][0] + C[n][10][1]);
 			constr.add(expr <=  SEAT[0]);
 			expr.clear();
 
-			expr = B[n][3][0] + B[n][3][1] + B[n][6][0] + B[n][6][1] + B[n][11][0] + B[n][11][1]
-				 -(C[n][3][0] + C[n][3][1] + C[n][6][0] + C[n][6][1] + C[n][11][0] + C[n][11][1]);
+			expr = B[n][3][0] + B[n][3][1] + B[n][6][0] + B[n][6][1] + B[n][11][0] + B[n][11][1];
+				 // -(C[n][3][0] + C[n][3][1] + C[n][6][0] + C[n][6][1] + C[n][11][0] + C[n][11][1]);
 			constr.add(expr <=  SEAT[0]);
 			expr.clear();
 
-			expr = B[n][4][0] + B[n][4][1] + B[n][9][0] + B[n][9][1] + B[n][11][0] + B[n][11][1]
-				 -(C[n][4][0] + C[n][4][1] + C[n][9][0] + C[n][9][1] + C[n][11][0] + C[n][11][1]);
+			expr = B[n][4][0] + B[n][4][1] + B[n][9][0] + B[n][9][1] + B[n][11][0] + B[n][11][1];
+				 // -(C[n][4][0] + C[n][4][1] + C[n][9][0] + C[n][9][1] + C[n][11][0] + C[n][11][1]);
 			constr.add(expr <=  SEAT[0]);
 			expr.clear();
 
-			expr = B[n][5][0] + B[n][5][1] + B[n][8][0] + B[n][8][1] + B[n][10][0] + B[n][10][1]
-				 -(C[n][5][0] + C[n][5][1] + C[n][8][0] + C[n][8][1] + C[n][10][0] + C[n][10][1]);
+			expr = B[n][5][0] + B[n][5][1] + B[n][8][0] + B[n][8][1] + B[n][10][0] + B[n][10][1];
+				 // -(C[n][5][0] + C[n][5][1] + C[n][8][0] + C[n][8][1] + C[n][10][0] + C[n][10][1]);
 			constr.add(expr <=  SEAT[0]);
 			expr.clear();
 
@@ -265,54 +265,55 @@ int main (int argc, char *argv[])
 
 			expr = B[n][0][2] + B[n][0][3] + B[n][0][4] + B[n][0][5] + 
 				   B[n][6][2] + B[n][6][3] + B[n][6][4] + B[n][6][5] +
-				   B[n][8][2] + B[n][8][3] + B[n][8][4] + B[n][8][5] -
-				  (C[n][0][2] + C[n][0][3] + C[n][0][4] + C[n][0][5] + 
-				   C[n][6][2] + C[n][6][3] + C[n][6][4] + C[n][6][5] +
-				   C[n][8][2] + C[n][8][3] + C[n][8][4] + C[n][8][5]);
+				   B[n][8][2] + B[n][8][3] + B[n][8][4] + B[n][8][5];
+				   // -
+				  // (C[n][0][2] + C[n][0][3] + C[n][0][4] + C[n][0][5] + 
+				   // C[n][6][2] + C[n][6][3] + C[n][6][4] + C[n][6][5] +
+				   // C[n][8][2] + C[n][8][3] + C[n][8][4] + C[n][8][5]);
 			constr.add(expr <=  SEAT[1]);
 			expr.clear();
 
 			expr = B[n][1][2] + B[n][1][3] + B[n][1][4] + B[n][1][5] + 
 				   B[n][7][2] + B[n][7][3] + B[n][7][4] + B[n][7][5] +
-				   B[n][9][2] + B[n][9][3] + B[n][9][4] + B[n][9][5] -
-				  (C[n][1][2] + C[n][1][3] + C[n][1][4] + C[n][1][5] + 
-				   C[n][7][2] + C[n][7][3] + C[n][7][4] + C[n][7][5] +
-				   C[n][9][2] + C[n][9][3] + C[n][9][4] + C[n][9][5]);
+				   B[n][9][2] + B[n][9][3] + B[n][9][4] + B[n][9][5];
+				  // (C[n][1][2] + C[n][1][3] + C[n][1][4] + C[n][1][5] + 
+				  //  C[n][7][2] + C[n][7][3] + C[n][7][4] + C[n][7][5] +
+				  //  C[n][9][2] + C[n][9][3] + C[n][9][4] + C[n][9][5]);
 			constr.add(expr <=  SEAT[1]);
 			expr.clear();
 			
 			expr = B[n][2][2] + B[n][2][3] + B[n][2][4] + B[n][2][5] + 
 				   B[n][7][2] + B[n][7][3] + B[n][7][4] + B[n][7][5] +
-				   B[n][10][2] + B[n][10][3] + B[n][10][4] + B[n][10][5] -
-				  (C[n][2][2] + C[n][2][3] + C[n][2][4] + C[n][2][5] + 
-				   C[n][7][2] + C[n][7][3] + C[n][7][4] + C[n][7][5] +
-				   C[n][10][2] + C[n][10][3] + C[n][10][4] + C[n][10][5]);
+				   B[n][10][2] + B[n][10][3] + B[n][10][4] + B[n][10][5];
+				  // (C[n][2][2] + C[n][2][3] + C[n][2][4] + C[n][2][5] + 
+				  //  C[n][7][2] + C[n][7][3] + C[n][7][4] + C[n][7][5] +
+				  //  C[n][10][2] + C[n][10][3] + C[n][10][4] + C[n][10][5]);
 			constr.add(expr <=  SEAT[1]);
 
 			expr = B[n][3][2] + B[n][3][3] + B[n][3][4] + B[n][3][5] + 
 				   B[n][6][2] + B[n][6][3] + B[n][6][4] + B[n][6][5] +
-				   B[n][11][2] + B[n][11][3] + B[n][11][4] + B[n][11][5] -
-				  (C[n][3][2] + C[n][3][3] + C[n][3][4] + C[n][3][5] + 
-				   C[n][6][2] + C[n][6][3] + C[n][6][4] + C[n][6][5] +
-				   C[n][11][2] + C[n][11][3] + C[n][11][4] + C[n][11][5]);
+				   B[n][11][2] + B[n][11][3] + B[n][11][4] + B[n][11][5];
+				  // (C[n][3][2] + C[n][3][3] + C[n][3][4] + C[n][3][5] + 
+				  //  C[n][6][2] + C[n][6][3] + C[n][6][4] + C[n][6][5] +
+				  //  C[n][11][2] + C[n][11][3] + C[n][11][4] + C[n][11][5]);
 			constr.add(expr <=  SEAT[1]);
 			expr.clear();
 
 			expr = B[n][4][2] + B[n][4][3] + B[n][4][4] + B[n][4][5] + 
 				   B[n][9][2] + B[n][9][3] + B[n][9][4] + B[n][9][5] +
-				   B[n][11][2] + B[n][11][3] + B[n][11][4] + B[n][11][5] -
-				  (C[n][4][2] + C[n][4][3] + C[n][4][4] + C[n][4][5] + 
-				   C[n][9][2] + C[n][9][3] + C[n][9][4] + C[n][9][5] +
-				   C[n][11][2] + C[n][11][3] + C[n][11][4] + C[n][11][5]);
+				   B[n][11][2] + B[n][11][3] + B[n][11][4] + B[n][11][5];
+				  // (C[n][4][2] + C[n][4][3] + C[n][4][4] + C[n][4][5] + 
+				  //  C[n][9][2] + C[n][9][3] + C[n][9][4] + C[n][9][5] +
+				  //  C[n][11][2] + C[n][11][3] + C[n][11][4] + C[n][11][5]);
 			constr.add(expr <=  SEAT[1]);
 			expr.clear();
 
 			expr = B[n][5][2] + B[n][5][3] + B[n][5][4] + B[n][5][5] + 
 				   B[n][8][2] + B[n][8][3] + B[n][8][4] + B[n][8][5] +
-				   B[n][10][2] + B[n][10][3] + B[n][10][4] + B[n][10][5] -
-				  (C[n][5][2] + C[n][5][3] + C[n][5][4] + C[n][5][5] + 
-				   C[n][8][2] + C[n][8][3] + C[n][8][4] + C[n][8][5] +
-				   C[n][10][2] + C[n][10][3] + C[n][10][4] + C[n][10][5]);
+				   B[n][10][2] + B[n][10][3] + B[n][10][4] + B[n][10][5];
+				  // (C[n][5][2] + C[n][5][3] + C[n][5][4] + C[n][5][5] + 
+				  //  C[n][8][2] + C[n][8][3] + C[n][8][4] + C[n][8][5] +
+				  //  C[n][10][2] + C[n][10][3] + C[n][10][4] + C[n][10][5]);
 			constr.add(expr <=  SEAT[1]);
 			expr.clear();
 		}

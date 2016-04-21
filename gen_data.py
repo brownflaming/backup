@@ -17,8 +17,8 @@ def write(filename, object):
 
 if __name__ == "__main__":
 
-	numStage = 14
-	scenPerStage = 10
+	numStage = 3
+	scenPerStage = 3
 	numScen = np.ones(numStage-1, np.int32) * scenPerStage
 	numScen = np.insert(numScen, 0, 1)
 	numFWsample = 1
@@ -40,27 +40,26 @@ if __name__ == "__main__":
 	R = df.values
 	print R.shape
 
-	nrow = ODI * FC * 5 + CABIN * LEG
+	nrow = ODI * FC * 4 + CABIN * LEG
 	x_ub = SEAT * 1.1 ## upper bound on x variables, this is problem dependent
 	numBin = np.floor(np.log2(np.ceil(x_ub))).astype(int) + 1  # number of binary needed for integer part
 	dimB = ODI * FC
-	dimX_old = dimB * 2 # (B, C, P)
-	dimX = (numBin[0] * 2 + numBin[1] * 4) * ODI * 2  # (10+32)*12*3
-	T = np.zeros((dimX_old, dimX))   # binary expansion matrix hat{x} = T*x
+	# dimX_old = dimB * 2 # (B, C, P)
+	dimX = (numBin[0] * 2 + numBin[1] * 4) * ODI  # (10+32)*12
+	T = np.zeros((dimB, dimX))   # binary expansion matrix hat{x} = T*x
 	print T.shape
 	# pdb.set_trace()
-	for var in range(2):
-		for i in range(ODI):
-			for j in range(FC):
-				row = var*ODI*FC + i*FC + j
-				if j < 2:
-					for k in range(numBin[0]):
-						col = var*dimX/2 + i*dimX/ODI/2 + j*numBin[0] + k
-						T[row][col] = 2 ** k
-				else:
-					for k in range(numBin[1]):
-						col = var*dimX/2 + i*dimX/ODI/2 + 2*numBin[0] + (j-2)*numBin[1] + k
-						T[row][col] = 2 ** k
+	for i in range(ODI):
+		for j in range(FC):
+			row = i*FC + j
+			if j < 2:
+				for k in range(numBin[0]):
+					col = i*dimX/ODI + j*numBin[0] + k
+					T[row][col] = 2 ** k
+			else:
+				for k in range(numBin[1]):
+					col = i*dimX/ODI + 2*numBin[0] + (j-2)*numBin[1] + k
+					T[row][col] = 2 ** k
 	# pdb.set_trace()
 
 	initState = np.zeros(dimX)
@@ -70,8 +69,8 @@ if __name__ == "__main__":
 	# constrSlack = np.transpose(constrSlack)
 	# print constrSlack
 
-	dataDir = "bin/data/" + str(numStage) + "_" + str(scenPerStage) + "/"
-	# dataDir = "bin/data/"
+	# dataDir = "bin/data/" + str(numStage) + "_" + str(scenPerStage) + "/"
+	dataDir = "bin/data/"
 	if not os.path.exists(dataDir):
 		os.makedirs(dataDir)
 
@@ -85,41 +84,32 @@ if __name__ == "__main__":
 
 	#######################################################################
 	# coefficient for x
-	xObj = np.zeros((numStage, dimX)) # [B C] in binary
+	xObj = np.zeros((numStage, dimX)) # B in binary
 	write(dataDir + "x.dat", str(xObj.tolist()))
 	print "xObj: ", xObj.shape
 	# print xObj
 
 	# coefficient for y1
-	y1Obj = np.zeros((numStage, dimB * 2)) # [b c]
-	cc = np.concatenate((np.tile(c1, 6), np.tile(c2, 6)))
+	y1Obj = np.zeros((numStage, dimB * 3)) # [Bt+1, Bt, bt+1, Ct+1, Ct, ct+1]
+	cc = np.concatenate((np.tile(c1, ODI/2), np.tile(c2, ODI/2)))
 	for t in range(1,numStage):
-		y1Obj[t][0: dimB] = - cc
-		y1Obj[t][dimB : 2*dimB] = cc
+		y1Obj[t][dimB * 2: dimB * 3] = - cc
+		# y1Obj[t][dimB * 5: dimB * 6] = cc
 	write(dataDir + "y1.dat", str(y1Obj.tolist()))
 	print "y1Obj: ", y1Obj.shape
 
 	# coefficient for y2 [ ]
-	y2Obj = np.zeros((numStage, nrow))
+	y2Obj = np.zeros((numStage, 0))
 	write(dataDir + "y2.dat", str(y2Obj.tolist()))
 	print "y2Obj: ", y2Obj.shape
 
 
 	## matrix of x variables
-	m0 = np.zeros((dimB, dimB * 2))
-	m1 = np.column_stack((np.identity(dimB), np.zeros((dimB, dimB))))
-	m2 = np.column_stack((np.zeros((dimB, dimB)), np.identity(dimB)))
-	m3 = np.column_stack((rI, np.zeros((dimB, dimB))))
-	m4 = np.column_stack((R, -R))
-	# print m0.shape, m1.shape, m2.shape, m3.shape, m4.shape, m5.shape
-	# matX = np.row_stack((np.tile(m0, (5,1)), m4))
-	# matX = np.array(find(np.dot(matX, T)))
-	# A = [matX.tolist()]
 	A = []
-	matX = np.row_stack((m1, m2, -m3 + m2, m3 - m2, m0, m4))
-	print "matX", matX.shape, T.shape
+	matX = np.row_stack((T, np.zeros((nrow - dimB, dimX))))
+	print "matX", matX.shape
 	# pdb.set_trace()
-	matX = np.array(find(np.dot(matX, T))).tolist()
+	matX = np.array(find(matX)).tolist()
 	for t in range(0, numStage):
 		A.append(matX)
 	write(dataDir + "A.dat", str(A))
@@ -129,9 +119,9 @@ if __name__ == "__main__":
 
 	## matrix of z variables
 	B = []
-	matZ = np.row_stack((-m1, -m2, np.tile(m0,(3,1)), np.zeros((CABIN*LEG, dimB*2))))
-	print "matZ", matZ.shape, T.shape
-	matZ = np.array(find(np.dot(matZ, T))).tolist()
+	matZ = np.row_stack(( np.zeros((dimB, dimX)), T, np.zeros((nrow - dimB * 2, dimX))))
+	print "matZ", matZ.shape
+	matZ = np.array(find(matZ)).tolist()
 	for t in range(numStage):
 		B.append(matZ)
 	write(dataDir + "B.dat", str(B))
@@ -139,11 +129,19 @@ if __name__ == "__main__":
 	for i in B: print len(i[0]),
 	print " "
 
-	## matrix of y1 (local integer) variables [b, c]
-	# matY1 = np.array(find(np.zeros((nrow, dimB * 2))))
-	# W1 = [matY1.tolist()]
+	## matrix of y1 (local integer) variables [Bt+1, Bt, bt+1, Ct+1, Ct, ct+1]
+	m1 = np.column_stack(( np.zeros((dimB, dimB * 0)), np.identity(dimB), np.zeros((dimB, dimB * 2)) ))
+	m2 = np.column_stack(( np.zeros((dimB, dimB * 1)), np.identity(dimB), np.zeros((dimB, dimB * 1)) ))
+	m3 = np.column_stack(( np.zeros((dimB, dimB * 2)), np.identity(dimB), np.zeros((dimB, dimB * 0)) ))
+	# m4 = np.column_stack(( np.zeros((dimB, dimB * 3)), np.identity(dimB), np.zeros((dimB, dimB * 2)) ))
+	# m5 = np.column_stack(( np.zeros((dimB, dimB * 4)), np.identity(dimB), np.zeros((dimB, dimB * 1)) ))
+	# m6 = np.column_stack(( np.zeros((dimB, dimB * 5)), np.identity(dimB), np.zeros((dimB, dimB * 0)) ))
+	m7 = np.column_stack(( R, np.zeros((R.shape[0], dimB * 2)) ))
+
 	W1 = []
-	matY1 = np.row_stack((-m1, -m2, np.tile(m0, (2,1)), m1, np.zeros((CABIN*LEG, dimB*2))))
+	# matY1 = np.row_stack((-m1, -m2, m1-m2-m3, m4-m5-m6, np.dot(rI, m1)-m4, -np.dot(rI, m1)+m4,\
+						  # np.dot(rI, m2)-m5, -np.dot(rI, m2)+m5, m7, m3 ))
+	matY1 = np.row_stack(( -m1, -m2, m1-m2-m3, m7, m3 ))
 	print "matY1", matY1.shape, T.shape
 	matY1 = np.array(find(matY1)).tolist()
 	for t in xrange(numStage):
@@ -155,7 +153,7 @@ if __name__ == "__main__":
 
 	## matrix of y2 (local continuous) variables
 	W2 = []
-	matY2 = np.array(find(np.zeros((nrow, nrow*2))))
+	matY2 = np.array(find(np.zeros((nrow, 0))))
 	for t in xrange(numStage):
 		W2.append(matY2.tolist())
 	write(dataDir + "W2.dat", str(W2))
@@ -165,22 +163,16 @@ if __name__ == "__main__":
 
 	## slack matrix S
 	S = np.identity(nrow)
-	for i in range(dimB * 2):
+	for i in range(dimB * 3):
 		S[i][i] = 0
 	S = np.array(find(S)).tolist()
 	write(dataDir + "S.dat", str(S))
 
 	## rhs of constraints
 	b = np.zeros((numStage, nrow))
-	rhs1 = np.concatenate((np.zeros(dimB*2), 0.5 * np.ones(dimB * 2),\
-						   np.zeros(dimB), C0 ))
-	rhs2 = np.concatenate((np.zeros(dimB*2), 0.5 * np.ones(dimB * 2),\
-						   np.zeros(dimB), C0 ))
+	rhs = np.concatenate(( np.zeros(dimB*3), C0, np.zeros(dimB) ))
 	for t in xrange(numStage):
-		if (t == numStage - 1):
-			b[t] = rhs1
-		else:
-			b[t] = rhs2
+		b[t] = rhs
 	write(dataDir + "rhs.dat", str(b.tolist()))
 	print "b: ", b.shape
 	# pdb.set_trace()
@@ -201,10 +193,10 @@ if __name__ == "__main__":
 	gammaScale = np.tile(np.array([1.5,1.5,1.2,1.2,1.0,1.0]), (ODI, 1))
 
 	betaShape = np.array([[12,8,6,4,3,2],[1.5,2.0,2.0,3.0,4.0,4.0]])
-	dcp = (182 - np.array([182, 126, 84, 56, 35, 21, 14, 10, 7, 5, 3, 2, 1, 0]))/182.0
+	# dcp = (182 - np.array([182, 126, 84, 56, 35, 21, 14, 10, 7, 5, 3, 2, 1, 0]))/182.0
 	# dcp = (182 - np.array([182, 126, 84, 56, 35, 21, 14, 10, 7, 5, 2, 0]))/182.0
 	# dcp = (182 - np.array([182, 35, 7, 0]))/182.0
-	# dcp = np.arange(0,183,182/(numStage-1))/182.0
+	dcp = np.arange(0,183,182/(numStage-1))/182.0
 	prop = np.zeros((FC, numStage))
 	for i in range(FC):
 		prop[i] = beta.cdf(dcp, betaShape[0][i], betaShape[1][i])
@@ -237,20 +229,16 @@ if __name__ == "__main__":
 	bScen = np.zeros((numStage, scenPerStage, nrow))
 	for t in range(1, numStage):
 		for k in xrange(scenPerStage):
-			if (t == numStage - 1):
-				new_rhs = rhs1
-				new_rhs[dimB*4 : dimB*5] = scenTree[t,k]
-				bScen[t,k] = new_rhs
-			else:
-				new_rhs = rhs2
-				new_rhs[dimB*4 : dimB*5] = scenTree[t,k]
-				bScen[t,k] = new_rhs
+			new_rhs = rhs
+			new_rhs[-dimB : ] = scenTree[t,k]
+			bScen[t,k] = new_rhs
 	write(dataDir + "bScen.dat", str(bScen.tolist()))
 	print "bScen: ", bScen.shape
 
 	newScenTree = scenTree.reshape((numStage, scenPerStage, ODI, FC))
 	# print newScenTree
-	dataDir = "tree/data/" + str(numStage) + "_" + str(scenPerStage) + "/"
+	# dataDir = "tree/data/" + str(numStage) + "_" + str(scenPerStage) + "/"
+	dataDir = "tree/data/"
 	if not os.path.exists(dataDir):
 		os.makedirs(dataDir)
 	write(dataDir + "demand.dat", str(newScenTree.tolist()))

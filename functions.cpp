@@ -552,8 +552,8 @@ void forward (model * models, formatData * fData_p,
 						models[t].constr2[i].setBounds(0.0, 0.0);
 				}
 
-				// char fileName[100];
-				// sprintf(fileName, "model_%d.lp", t);
+				char fileName[100];
+				sprintf(fileName, "model_%d.lp", t);
 				// models[t].cplex.exportModel(fileName);
 			} // End of update problem models[t]
 
@@ -765,22 +765,24 @@ void backward (model * models, formatData * fData_p, const IloNumArray3 candidat
 
 				// update the state variables z_t = x_{t-1}
 				models[t].constr2.setBounds( candidateSol[p][t-1], candidateSol[p][t-1] );
-				if ( t == 1 )
-				{
-					for ( i = 0; i < models[t].constr2.getSize(); ++i )
-						models[t].constr2[i].setBounds(0.0, 0.0);
-				}
+				// if ( t == 1 )
+				// {
+				// 	for ( i = 0; i < models[t].constr2.getSize(); ++i )
+				// 		models[t].constr2[i].setBounds(0.0, 0.0);
+				// }
 
-				// char fileName[100];
-				// sprintf(fileName, "model_%d_%d_%d.lp", t, iter, k);
+				char fileName[100];
+				sprintf(fileName, "model_%d_%d_%d.lp", t, iter, k);
 				// models[t].cplex.exportModel(fileName);
-				
+				// cout << "solving ... " << fileName << endl;
+
 				// solve nodal MIP/LP
 				// If MIP, objective value can be used in integer cut or serve as an ub for LGobj
 				if ( models[t].cplex.solve() ) // feasible
 				{	
 					// get solution status
 					solStatus = models[t].cplex.getStatus();
+					// cout << "solution status: " << solStatus << endl;
 
 					if ( solStatus == IloAlgorithm::Optimal )
 					{
@@ -789,11 +791,11 @@ void backward (model * models, formatData * fData_p, const IloNumArray3 candidat
 						{
 							scenLPobj.add(models[t].cplex.getObjValue());
 							models[t].cplex.getDuals(dualVar, models[t].constr2);
-							for (int k1 = 0; k1 < dualVar.getSize(); ++k1 )
-							{
-								if (abs(dualVar[k1]) < 2 * 1e-4)
-									dualVar[k1] = 0.0;
-							}
+							// for (int k1 = 0; k1 < dualVar.getSize(); ++k1 )
+							// {
+							// 	if (abs(dualVar[k1]) < 2 * 1e-4)
+							// 		dualVar[k1] = 0.0;
+							// }
 							// cout << "dualVar: " << dualVar << endl;
 							for (i = 0; i < dimX; ++i)
 								LPdualAvg[i] += dualVar[i] / fData_p->numScen[t];
@@ -970,7 +972,7 @@ void backward (model * models, formatData * fData_p, const IloNumArray3 candidat
 								modelLGD.cplex = IloCplex(modelLGD.mod);
 								// char fileName[100];
 								// sprintf(fileName, "LGDmodel_%d.lp", t);
-								// cplexLGD.exportModel(fileName);
+								// modelLGD.cplex.exportModel(fileName);
 								modelLGD.cplex.setOut(modelLGD.env.getNullStream());
 
 								// solve IP to get improved Benders' cut
@@ -1013,6 +1015,8 @@ void backward (model * models, formatData * fData_p, const IloNumArray3 candidat
 				}
 			} // End of loop over all scenarios in stage t
 			// cin.get();
+			cout << scenMIPobj << endl;
+			cout << scenLPobj << endl;
 
 			// construct and add different types of cuts
 			if ( cutFlag[0] + cutFlag[1] ) // Benders + ImprovedBenders
