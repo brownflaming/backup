@@ -309,9 +309,9 @@ void buildModel (model * models, formatData * fData_p)
 		models[t].cplex.setWarning(models[t].env.getNullStream());
 
 		// write model to lp file
-		char fileName[100];
-		sprintf(fileName, "model_%d.lp", t);
-		models[t].cplex.exportModel(fileName);
+		// char fileName[100];
+		// sprintf(fileName, "model_%d.lp", t);
+		// models[t].cplex.exportModel(fileName);
 
 	} // End of t-loop for model construction
 	return;
@@ -438,7 +438,9 @@ void forward (model * models, formatData * fData_p,
 	for ( p = 0; p < sampleSize; ++p )
 	{
 		// cout << "================================" << endl;
-		// cout << "Compute solution for sample path p =  " << p << endl;
+		cout << "Compute solution for sample path p =  " << p << endl;
+		cout << "\e[A";
+
 		candidateSol.add(IloNumArray2(fData_p->dataEnv));
 
 		for ( t = 0; t < fData_p->numStage; ++t )

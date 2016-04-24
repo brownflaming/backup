@@ -145,10 +145,10 @@ int main (int argc, char *argv[])
 				i.e., variance of the last five lower bounds is small enough
 			*/
 			
-			if ( iteration >= 4 )
+			if ( iteration >= 10 )
 			{
 				vector<float> recentLB;
-				for ( int i = 1; i < 3; ++i )
+				for ( int i = 1; i < 5; ++i )
 					recentLB.push_back(lb[iteration-i]);
 
 				double stdReLB = std_dev(recentLB);
@@ -170,18 +170,18 @@ int main (int argc, char *argv[])
 			elapsed_seconds = end - start;
 			runtime = elapsed_seconds.count();
 
-		} while ( (iteration < MAXITER) && (runtime < 18000) );
+		} while ( (iteration < MAXITER) );
 
 		end = chrono::system_clock::now();
 		elapsed_seconds = end - start;
 		runtime = elapsed_seconds.count();
 		printf("Total running time %.2f seconds.\n", runtime);
 		
-		fData.numFWsample = 1500;
+		fData.numFWsample = 1000;
 		getSamplePaths(samplePaths, fData_p);
 		forward(models, fData_p, samplePaths, candidateSol, ub_c, ub_l, ub_r);
 		
-		ofstream output ("0410.txt", ios::out | ios::app);
+		ofstream output ("0421.txt", ios::out | ios::app);
 		if ( output.is_open() )
 		{
 			output << "==================================================" << endl;
@@ -200,20 +200,18 @@ int main (int argc, char *argv[])
 			output << "right 95\% CI for the upper bound: " << ub_r << endl;
 		}
 
-		ofstream table ("0410.csv", ios::out | ios::app);
+		ofstream table ("0421.csv", ios::out | ios::app);
 		if ( table.is_open() )
 		{
 			table << fData.numStage << ", " <<
 				fData.numScen[1] << ", " <<
 				fData.totalScen << ", " <<
 				initSampleSize << ", " << 
-				lb[iteration-1] << ", " <<
+				-lb[iteration-1] << ", " <<
 				iteration << ", " <<
-				ub_l[iteration] << ", " <<
-				ub_r[iteration] << ", " <<
+				-ub_r[iteration] << ", " <<
 				setiosflags(ios::fixed | ios::showpoint) << setprecision(4) <<
 				-(ub_r[iteration] - lb[iteration-1])/ub_r[iteration] << ", " <<
-				int(runtime / iteration) << ", " <<
 				int(runtime) << endl;
 		}
 

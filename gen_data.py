@@ -16,8 +16,8 @@ def write(filename, object):
 
 if __name__ == "__main__":
 
-	numStage = 9
-	scenPerStage = 15
+	numStage = 52
+	scenPerStage = 10
 	numScen = np.ones(numStage, np.int32) * scenPerStage
 	numScen = np.insert(numScen, 0, 1)
 	numFWsample = 2
@@ -35,7 +35,7 @@ if __name__ == "__main__":
 	print k1, k2
 	
 	dimX = k * numStock
-	pdb.set_trace()
+	# pdb.set_trace()
 	T = np.zeros((numStock, dimX))   # binary expansion matrix hat{x} = T*x
 	for i in range(numStock):
 		for j in range(k1, -k2, -1):

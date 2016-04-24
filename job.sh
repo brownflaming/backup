@@ -2,34 +2,81 @@
 
 cd bin
 
-
-cp data/6_20/* data/
-for k in 1 2 5
-do
-	cd data
-	echo $k > numFWsample.dat
-	cd ..
-	for n in 1 2 3
-	do
-		./pfopt 0 1 0 1
-		clear
-	done
-done
-
-cp data/7_20/* data/
-for k in 1 2
-do
-	cd data
-	echo $k > numFWsample.dat
-	cd ..
-	for n in 1 2 3
-	do
-		./pfopt 0 1 0 1
-		clear
-	done
-done
+# for branch in 10 15 20
+# do
+# 	cp data/4_${branch}/* data/
+# 	for k in 1 2 5 10
+# 	do
+# 		cd data
+# 		echo $k > numFWsample.dat
+# 		cd ..
+# 		./pfopt 0 1 0 1
+# 		clear
+# 	done
+# done
 
 
+# for branch in 10 15 20
+# do
+# 	cp data/5_${branch}/* data/
+# 	for k in 1 2 5
+# 	do
+# 		cd data
+# 		echo $k > numFWsample.dat
+# 		cd ..
+# 		./pfopt 0 1 0 1
+# 		clear
+# 	done
+# done
+
+
+# cp data/6_20/* data/
+# for k in 1 2 5
+# do
+# 	cd data
+# 	echo $k > numFWsample.dat
+# 	cd ..
+# 	./pfopt 0 1 0 1
+# 	clear
+# done
+
+# cp data/7_20/* data/
+# for k in 1 2 5
+# do
+# 	cd data
+# 	echo $k > numFWsample.dat
+# 	cd ..
+# 	./pfopt 0 1 0 1
+# 	clear
+# done
+
+# cp data/8_15/* data/
+# cd data
+# echo 1 > numFWsample.dat
+# cd ..
+# ./pfopt 0 1 0 1
+# clear
+
+# cp data/10_10/* data/
+# cd data
+# echo 1 > numFWsample.dat
+# cd ..
+# ./pfopt 0 1 0 1
+# clear
+
+# cp data/12_10/* data/
+# cd data
+# echo 1 > numFWsample.dat
+# cd ..
+# ./pfopt 0 1 0 1
+# clear
+
+cp data/52_10/* data/
+cd data
+echo 1 > numFWsample.dat
+cd ..
+./pfopt 0 1 0 1
+clear
 
 
 
