@@ -369,7 +369,7 @@ void forward (Model * models, formatData * fData_p, const IloNumArray3 samplePat
 	ub_c.add(center);
 	ub_l.add(center - halfLength);
 	ub_r.add(center + halfLength);
-	// cout << "objective value for forward sample paths: " << sampleObj << endl;
+	cout << "objective value for forward sample paths: " << sampleObj << endl;
 	/*
 	cout << ub_l << endl;
 	cout << ub_c << endl;

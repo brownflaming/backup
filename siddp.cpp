@@ -88,7 +88,8 @@ int main (int argc, char *argv[])
 		unordered_set<string> uniqCandidateSol;
 		unsigned masterSize_old, masterSize_new;
 
-		// start the loop until some stopping creterior is hit		
+		// start the loop until some stopping creterior is hit
+		bool stable = 0;		
 		do
 		{
 			iteration += 1;
@@ -107,6 +108,7 @@ int main (int argc, char *argv[])
 
 			cout << "Forward pass completed." << endl;
 			cout << "================================" << endl;
+			
 			
 			// insert master solution to unordered_set masterSol
 			for ( int p = 0; p < fData.numFWsample; ++p )
@@ -188,16 +190,26 @@ int main (int argc, char *argv[])
 
 		} while ( (iteration < MAXITER) && (runtime < 18000) );
 
-		fData.numFWsample = 1500;
-		getSamplePaths(samplePaths, coefSamplePaths, fData_p);	
-		forward(models, fData_p, samplePaths, coefSamplePaths, candidateSol, ub_c, ub_l, ub_r);
+		for (int i = iteration; i < MAXITER; i++)
+		{
+			cout << "iteration: " << i + 1 << endl;
+			if ( i == MAXITER - 1 )
+				fData.numFWsample = 1500;
+			getSamplePaths(samplePaths, coefSamplePaths, fData_p);	
+			forward(models, fData_p, samplePaths, coefSamplePaths, candidateSol, ub_c, ub_l, ub_r);
+			lb.add(lb[i-1]);
+			candidateSol.clear();
+			samplePaths.clear();
+			coefSamplePaths.clear();
+		}
+
 
 		end = chrono::system_clock::now();
 		elapsed_seconds = end - start;
 		runtime = elapsed_seconds.count();
 		printf("Total running time %.2f seconds.\n", runtime);
 
-		ofstream output ("0208_result.txt", ios::out | ios::app);
+		ofstream output ("0504_result.txt", ios::out | ios::app);
 		if ( output.is_open() )
 		{
 			output << "==================================================" << endl;
@@ -216,17 +228,35 @@ int main (int argc, char *argv[])
 			output << "right 95\% CI for the upper bound: " << ub_r << endl;
 		}
 
-		ofstream table ("0208_table.txt", ios::out | ios::app);
-		if ( table.is_open() )
+		// ofstream table ("0504_table.txt", ios::out | ios::app);
+		// if ( table.is_open() )
+		// {
+		// 	table << initSampleSize << ", " << 
+		// 		lb[iteration-1] << ", " <<
+		// 		iteration << ", " <<
+		// 		ub_l[iteration] << ", " <<
+		// 		ub_r[iteration] << ", " <<
+		// 		(ub_r[iteration] - lb[iteration-1])/ub_r[iteration] << ", " <<
+		// 		runtime / iteration << ", " <<
+		// 		runtime << endl;
+		// }
+	
+		ofstream bounds ("mydata.csv", ios::out | ios::app);
+		if ( bounds.is_open() )
 		{
-			table << initSampleSize << ", " << 
-				lb[iteration-1] << ", " <<
-				iteration << ", " <<
-				ub_l[iteration] << ", " <<
-				ub_r[iteration] << ", " <<
-				(ub_r[iteration] - lb[iteration-1])/ub_r[iteration] << ", " <<
-				runtime / iteration << ", " <<
-				runtime << endl;
+			bounds << "Benders cut: " << bendersFlag << endl;
+			bounds << "Improved Benders cut: " << impvdBendersFlag << endl;
+			bounds << "Lagrangian cut: " << lagrangianFlag << endl;
+			bounds << "Integer Optimality cut: " << integerFlag << endl;
+			bounds << "iteration" << "," << "LB" << "," << "UB" << "," << "UBl" << "," << "UBr" << endl;
+			for (int i = 0; i < MAXITER; ++i )
+			{
+				bounds << i+1 << "," <<
+						  lb[i] << "," <<
+						  ub_c[i] << "," <<
+						  ub_l[i] << "," <<
+						  ub_r[i] << endl;
+			}
 		}
 
 		// free memory

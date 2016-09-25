@@ -2,7 +2,7 @@
 #define GLOBALS_H_INCLUDED
 
 /*Maximum number of iterations*/
-const int MAXITER=10000;
+const int MAXITER=50;
 
 /*Tolerance for optimality : stopping for SDDP iterations*/
 const double TOLOPT = 0.05;
