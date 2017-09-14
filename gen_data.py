@@ -6,29 +6,33 @@ import os
 if __name__ == "__main__":
 
     HORIZON = 5
-    GENERATOR_LIST = {0: 'BaseLoad', 1: 'CC', 2: 'CT', 3: 'Nuclear', 4: 'Wind', 5: 'IGCC'}
-    MAX_OUTPUT = np.array([1130.0, 390.0, 380.0, 1180.0, 175.0, 560.0])
-    MAX_UNIT = np.array([4, 10, 10, 1, 45, 4], np.int32)
-    SUBPERIOD = 3
-    SUBPERIOD_HOUR = np.array([271.0, 6556.0, 1933.0])
+    BUS = 3
+    GEN = 5
+    BRANCH =
 
-    CONSTRUCTION_COST = np.array([1.446, 0.795, 0.575, 1.613, 1.650, 1.671])
-    MAX_CAPACITY = np.array([1200.0, 400.0, 400.0, 1200.0, 500.0, 600.0])
+    BUS_GEN_MATRIX = 
 
-    FUEL_PRICE = np.array([3.37, 9.37, 9.37, 0.93e-3, 0, 3.37]) * 1e-6
-    RATIO = [8.844 / 0.4, 7.196 / 0.56, 10.842 / 0.4, 10.400 / 0.45, 0.0, 8.613 / 0.48]
-    FUEL_PRICE_GROWTH = 0.02
-    OPERATING_COST = np.array([4.7, 2.11, 3.66, 0.51, 5.00, 2.98]) * 1e-6
-    OPER_COST_GROWTH = 0.03
-    PENALTY_COST = 1e-1
-    LAMBDA = np.array([1.38, 1.04, 0.80])
-    HOURS_PER_YEAR = 8760.0
-    rate = 0.08     # interest rate
-    #price_mean = np.ones(HORIZON) * 9.37
-    price_mean = np.array([9.37000, 9.79257, 10.23477, 10.69770, 11.18226, 11.68951, 12.22057, 12.77657, 13.35693, 13.96636])
-    price_std = np.array([0.0, 0.9477973, 1.2146955, 1.4957925, 1.7848757, 2.0798978, 2.3814051, 2.6911019, 3.0063683, 3.3382216])
-    #price_std = np.zeros(HORIZON)
+    BUS_BRANCH_MATRIX = 
 
+
+
+    STARTUP_COST = np.array()  # dim = numGen
+    SHUTDOWN_COST = np.array()  # dim = numGen
+    GEN_COST =  # piece-wise linear cost, given by (coefficient, break point) pairs
+    PENALTY_COST = 1e6
+
+    OUTPUT_LIMIT = np.array()  # dim = numGen
+    RAMP_UP_LIMIT = np.array()  # dim = numGen
+    RAMP_DOWN_LIMIT = np.array()  # dim = numGen
+    FLOW_LIMIT = np.array()  # dim = numBRANCH
+    MIN_RESERVE = np.array()
+
+    MIN_UP = np.array()
+    MIN_DOWN = np.array()
+
+
+
+    
 
     nType = len(GENERATOR_LIST)     # number of technology
     nUnit = sum(MAX_UNIT)           # sum of maximum construction
@@ -67,121 +71,7 @@ if __name__ == "__main__":
 		sample = (price_mean[t] + price_std[t] * truncnorm.rvs(-1, 1, size=numScen[t])) * 1e-12 / 1.028
 		price[t] = list(sample)
 		
-    ''' Parameters used by tree model '''
-
-    treeDataDir = "test_tree_model/data_" + str(HORIZON) + "/"
-    if not os.path.exists(treeDataDir):
-        os.makedirs(treeDataDir)
-
-    # number of stages
-    myFile = open(treeDataDir + "numStage.dat", "w")
-    myFile.write(str(HORIZON))
-    myFile.close()
-
-    # number of generators
-    myFile = open(treeDataDir + "numGen.dat", "w")
-    myFile.write(str(nType))
-    myFile.close()
-
-    # number of subperiods
-    myFile = open(treeDataDir + "numSub.dat", "w")
-    myFile.write(str(SUBPERIOD))
-    myFile.close()
-
-    # number of children
-    myFile = open(treeDataDir + "numChi.dat", "w")
-    myFile.write(str(scenPerStage))
-    myFile.close()
-
-    # number of nodes
-    numNode = (scenPerStage ** HORIZON - 1) / (scenPerStage - 1)
-    myFile = open(treeDataDir + "numNode.dat", "w")
-    myFile.write(str(numNode))
-    myFile.close()
-
-    # max output
-    myFile = open(treeDataDir + "maxOutput.dat", "w")
-    myFile.write("[")
-    for i in xrange(MAX_OUTPUT.shape[0]):
-        myFile.write(str(MAX_OUTPUT[i]))
-        if i != MAX_OUTPUT.shape[0] - 1:
-            myFile.write(",")
-    myFile.write("]")
-    myFile.close()
-
-    # max units
-    myFile = open(treeDataDir + "maxUnit.dat", "w")
-    myFile.write("[")
-    for i in xrange(MAX_UNIT.shape[0]):
-        myFile.write(str(MAX_UNIT[i]))
-        if i != MAX_UNIT.shape[0] - 1:
-            myFile.write(",")
-    myFile.write("]")
-    myFile.close()
-
-    # scenarios
-    myFile = open(treeDataDir + "demand.dat", "w")
-    myFile.write(str(scenarios))
-    myFile.close()
-
-    # xCoef of tree model
-    prob = 1.0 / scenPerStage
-    xCoef = np.zeros((HORIZON, nType))
-    totalCost = np.multiply(CONSTRUCTION_COST, MAX_CAPACITY)
-    for t in np.arange(HORIZON):
-        xCoef[t] = (prob ** t) * totalCost / (1 + rate) ** t
-
-    myFile = open(treeDataDir + "xCoef.dat", "w")
-    myFile.write("[")
-    for row in xrange(xCoef.shape[0]):
-        myFile.write("[")
-        for column in xrange(xCoef.shape[1]):
-            myFile.write(str(xCoef[row, column]))
-            if column != xCoef.shape[1] - 1:
-                myFile.write(",")
-        myFile.write("]")
-        if row != xCoef.shape[0] - 1:
-            myFile.write(",")
-    myFile.write("]")
-    myFile.close()
-
-    # yCoef of tree model
-    yCoef = []
-    for t in np.arange(HORIZON):
-    	yCoef_t = [ [0] * SUBPERIOD for n in xrange(numScen[t]) ]
-    	for n in xrange(numScen[t]):
-    		for k in xrange(SUBPERIOD):
-    			temp = np.multiply(FUEL_PRICE, RATIO) * (1 + FUEL_PRICE_GROWTH) ** t
-    			for i in [1, 2]:
-    				temp[i] = price[t][n] * RATIO[i]
-    			temp = temp + OPERATING_COST * (1 + OPER_COST_GROWTH) ** t
-    			temp = (prob ** t) * SUBPERIOD_HOUR[k] * temp / (1 + rate) ** t
-    			yCoef_t[n][k] = list(temp)
-    	yCoef.append(yCoef_t)
-    #print yCoef
-            
-    myFile = open(treeDataDir + "yCoef.dat", "w")
-    myFile.write(str(yCoef))
-    myFile.close()
-
-    # zCoef of tree model
-    zCoef = np.zeros((HORIZON, SUBPERIOD))
-    for t in np.arange(HORIZON):
-        zCoef[t] = (prob ** t) * SUBPERIOD_HOUR * PENALTY_COST / (1 + rate) ** t
     
-    myFile = open(treeDataDir + "zCoef.dat", "w")
-    myFile.write("[")
-    for t in xrange(zCoef.shape[0]):
-        myFile.write("[")
-        for k in xrange(zCoef.shape[1]):
-            myFile.write(str(zCoef[t, k]))
-            if k != zCoef.shape[1] - 1:
-                myFile.write(",")
-        myFile.write("]")
-        if t != zCoef.shape[0] - 1:
-            myFile.write(",")
-    myFile.write("]")
-    myFile.close()
 
 
     ''' Parameters used by SDDP '''

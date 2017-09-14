@@ -1,9 +1,6 @@
 #!/bin/bash
 
-./gep 0 1 0 0
-
-./gep 0 1 1 0
-
-./gep 0 1 0 1
-
-./gep 0 1 1 1
+for i in $(seq 1 10)
+do
+	echo ${i}
+done
